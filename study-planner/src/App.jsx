@@ -8,6 +8,7 @@ import StudyPlan from './pages/StudyPlan/StudyPlan'
 import Quiz from './pages/Quiz/Quiz'
 import Notes from './pages/Notes/Notes'
 import Layout from './components/Layout'
+import Profile from './pages/profile/Profile'
 
 const App = () => {
   return (
@@ -19,14 +20,15 @@ const App = () => {
         {/* Auth Pages */}
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
-
+        
+        <Route path="/profile" element={<Layout><Profile /></Layout>} />  
         
         {/* Main Pages — Layout ke andar honge */}
         <Route path="/dashboard" element={<Layout><Dashboard /></Layout>} />
         <Route path="/timelog" element={<Layout><TimeLog /></Layout>} />
         <Route path="/studyplan" element={<Layout><StudyPlan /></Layout>} />
         <Route path="/quiz" element={<Layout><Quiz /></Layout>} />
-        <Route path="/notes" element={<Layout><Notes /></Layout>} />
+        <Route path="/notes" element={<Layout><Notes /></Layout>} />  
         </Routes>
     </BrowserRouter>
   )
