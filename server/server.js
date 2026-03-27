@@ -9,7 +9,7 @@ const authRoutes = require('./routes/authRoutes');
 // Load env variables
 dotenv.config();
 
-// Database connect karo
+// ← Naya: Database connect karein (server start hone se pehle)
 connectDB();
 
 // Express app initialize karein
@@ -24,7 +24,7 @@ app.use('/api/auth', authRoutes);
 
 // Basic Test Route
 app.get('/', (req, res) => {
-  res.send('Study Planner Backend is running!');
+  res.send('Study Planner Backend is running! ✅');
 });
 
 // Port define karein
@@ -32,5 +32,5 @@ const PORT = process.env.PORT || 5000;
 
 // Server start karein
 app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+  console.log(`🚀 Server is running on port ${PORT}`);
 });
