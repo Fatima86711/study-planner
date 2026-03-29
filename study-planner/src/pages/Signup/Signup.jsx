@@ -1,9 +1,7 @@
-import React from 'react'
+import { Navigate } from 'react-router-dom'
 
 const Signup = () => {
-  return (
-    <div>Signup</div>
-  )
+  return <Navigate to="/login" />
 }
 
 export default Signup

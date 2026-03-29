@@ -1,43 +1,12 @@
-import { useState } from 'react'
-import { MdCheckCircle, MdRadioButtonUnchecked, MdCalendarToday, MdAutoAwesome, MdAccessTime } from 'react-icons/md'
+import { useState, useEffect } from 'react'
+import {
+  MdCheckCircle, MdRadioButtonUnchecked, MdCalendarToday,
+  MdAutoAwesome, MdAccessTime, MdAdd, MdSave
+} from 'react-icons/md'
 import { FaBrain, FaFire } from 'react-icons/fa'
+import api from '../../services/api'
 
-// ── Dummy Data ──
 const weekDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-
-const initialPlan = {
-  Monday: [
-    { id: 1, subject: 'Mathematics', topic: 'Calculus — Derivatives', duration: '1h 30m', time: '9:00 AM', priority: 'high', done: false },
-    { id: 2, subject: 'Physics', topic: 'Newton\'s Laws', duration: '1h', time: '11:00 AM', priority: 'medium', done: false },
-    { id: 3, subject: 'Chemistry', topic: 'Periodic Table Review', duration: '45m', time: '3:00 PM', priority: 'high', done: false },
-  ],
-  Tuesday: [
-    { id: 4, subject: 'Mathematics', topic: 'Integration Basics', duration: '1h 30m', time: '9:00 AM', priority: 'high', done: false },
-    { id: 5, subject: 'English', topic: 'Essay Writing Practice', duration: '1h', time: '12:00 PM', priority: 'low', done: false },
-    { id: 6, subject: 'Chemistry', topic: 'Chemical Bonding', duration: '1h', time: '3:00 PM', priority: 'high', done: false },
-  ],
-  Wednesday: [
-    { id: 7, subject: 'Physics', topic: 'Kinematics', duration: '1h', time: '10:00 AM', priority: 'medium', done: false },
-    { id: 8, subject: 'Mathematics', topic: 'Trigonometry', duration: '1h 30m', time: '12:00 PM', priority: 'high', done: false },
-    { id: 9, subject: 'Biology', topic: 'Cell Structure', duration: '45m', time: '4:00 PM', priority: 'low', done: false },
-  ],
-  Thursday: [
-    { id: 10, subject: 'Chemistry', topic: 'Organic Chemistry Intro', duration: '1h 30m', time: '9:00 AM', priority: 'high', done: false },
-    { id: 11, subject: 'Physics', topic: 'Wave Motion', duration: '1h', time: '11:00 AM', priority: 'medium', done: false },
-  ],
-  Friday: [
-    { id: 12, subject: 'Mathematics', topic: 'Practice Problems', duration: '2h', time: '9:00 AM', priority: 'high', done: false },
-    { id: 13, subject: 'English', topic: 'Reading Comprehension', duration: '45m', time: '12:00 PM', priority: 'low', done: false },
-    { id: 14, subject: 'Chemistry', topic: 'Revision', duration: '1h', time: '3:00 PM', priority: 'high', done: false },
-  ],
-  Saturday: [
-    { id: 15, subject: 'Full Revision', topic: 'Mathematics + Physics', duration: '2h', time: '10:00 AM', priority: 'high', done: false },
-    { id: 16, subject: 'Quiz Practice', topic: 'All Subjects', duration: '1h', time: '1:00 PM', priority: 'medium', done: false },
-  ],
-  Sunday: [
-    { id: 17, subject: 'Rest & Light Review', topic: 'Go through notes', duration: '1h', time: '5:00 PM', priority: 'low', done: false },
-  ],
-}
 
 // ── Priority Badge ──
 const PriorityBadge = ({ priority }) => {
@@ -47,34 +16,121 @@ const PriorityBadge = ({ priority }) => {
     low: 'bg-green-50 text-green-600 border-green-200',
   }
   return (
-    <span className={`text-xs font-bold px-2 py-1 rounded-lg border ${styles[priority]}`}>
-      {priority.charAt(0).toUpperCase() + priority.slice(1)}
+    <span className={`text-xs font-bold px-2 py-1 rounded-lg border ${styles[priority] || styles.medium}`}>
+      {priority ? priority.charAt(0).toUpperCase() + priority.slice(1) : 'Medium'}
     </span>
   )
 }
 
 const StudyPlan = () => {
   const [activeDay, setActiveDay] = useState('Monday')
-  const [plan, setPlan] = useState(initialPlan)
-  const [activeTab, setActiveTab] = useState('daily') // daily | weekly
+  const [activeTab, setActiveTab] = useState('daily')
 
-  const toggleDone = (dayKey, taskId) => {
-    setPlan(prev => ({
-      ...prev,
-      [dayKey]: prev[dayKey].map(task =>
-        task.id === taskId ? { ...task, done: !task.done } : task
-      )
-    }))
+  // ── Plans State ──────────────────────────────────────────────────────────
+  const [plans, setPlans] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  // ── AI Generate State ────────────────────────────────────────────────────
+  const [showGenerateModal, setShowGenerateModal] = useState(false)
+  const [genSubject, setGenSubject] = useState('')
+  const [genDays, setGenDays] = useState('7')
+  const [genHours, setGenHours] = useState('2')
+  const [generating, setGenerating] = useState(false)
+  const [generatedPlan, setGeneratedPlan] = useState(null)
+  const [saving, setSaving] = useState(false)
+
+  // ── Fetch Plans ──────────────────────────────────────────────────────────
+  useEffect(() => {
+    const fetchPlans = async () => {
+      try {
+        const res = await api.get('/api/study-plan/my-plans')
+        setPlans(res.data.plans)
+      } catch (err) {
+        setError('Plans load nahi hue')
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchPlans()
+  }, [])
+
+  // ── AI Generate Plan ─────────────────────────────────────────────────────
+  const handleGenerate = async () => {
+  if (!genSubject.trim()) return alert('Subject likho!')
+  setGenerating(true)
+
+  try {
+    const res = await api.post('/api/ai/plan', {
+      subject: genSubject,
+      days: genDays,
+      hours: genHours,
+    })
+    setGeneratedPlan(res.data.plan)
+  } catch (err) {
+    alert('AI plan generate nahi kar saka — please retry')
+  } finally {
+    setGenerating(false)
+  }
+}
+
+  // ── Save Generated Plan ──────────────────────────────────────────────────
+  const handleSavePlan = async () => {
+    if (!generatedPlan) return
+    setSaving(true)
+
+    try {
+      const res = await api.post('/api/study-plan/save', {
+        title: generatedPlan.title,
+        subject: generatedPlan.subject,
+        tasks: generatedPlan.tasks,
+      })
+
+      // Naya plan list mein add karo
+      setPlans(prev => [res.data.plan, ...prev])
+      setGeneratedPlan(null)
+      setShowGenerateModal(false)
+      setGenSubject('')
+      alert('Plan saved successfully!')
+
+    } catch (err) {
+      alert('Plan save nahi hua — please retry')
+    } finally {
+      setSaving(false)
+    }
   }
 
-  const currentDayTasks = plan[activeDay] || []
-  const completedCount = currentDayTasks.filter(t => t.done).length
-  const totalCount = currentDayTasks.length
-  const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0
+  // ── Task Complete Toggle ─────────────────────────────────────────────────
+  const handleTaskComplete = async (planId, taskId) => {
+    try {
+      const res = await api.patch(`/api/study-plan/${planId}/task/${taskId}`)
 
-  // Weekly stats
-  const allTasks = Object.values(plan).flat()
-  const totalDone = allTasks.filter(t => t.done).length
+      // Local state update karo
+      setPlans(prev =>
+        prev.map(plan =>
+          plan._id === planId
+            ? {
+                ...plan,
+                tasks: plan.tasks.map(task =>
+                  task._id === taskId
+                    ? { ...task, isCompleted: true }
+                    : task
+                )
+              }
+            : plan
+        )
+      )
+    } catch (err) {
+      alert('Task update nahi hua')
+    }
+  }
+
+  // ── Active Plan — latest plan ─────────────────────────────────────────────
+  const activePlan = plans[0] || null
+
+  // ── Weekly Stats ──────────────────────────────────────────────────────────
+  const allTasks = plans.flatMap(p => p.tasks)
+  const totalDone = allTasks.filter(t => t.isCompleted).length
   const totalTasks = allTasks.length
 
   return (
@@ -84,18 +140,28 @@ const StudyPlan = () => {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Study Plan</h1>
-          <p className="text-gray-400 text-sm mt-1">AI generated personalized plan based on your performance</p>
+          <p className="text-gray-400 text-sm mt-1">
+            AI generated personalized plan based on your performance
+          </p>
         </div>
 
-        {/* AI Generated Badge */}
-        <div
-          className="flex items-center gap-2 px-4 py-2 rounded-xl text-white text-sm font-semibold shadow-md"
+        {/* Generate Button */}
+        <button
+          onClick={() => setShowGenerateModal(true)}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl text-white text-sm font-semibold shadow-md transition-transform hover:scale-105"
           style={{ background: 'linear-gradient(to right, #0f766e, #14b8a6)' }}
         >
           <MdAutoAwesome size={18} />
-          AI Generated Plan
-        </div>
+          Generate AI Plan
+        </button>
       </div>
+
+      {/* ── Error ── */}
+      {error && (
+        <div className="px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm">
+          {error}
+        </div>
+      )}
 
       {/* ── Tab: Daily / Weekly ── */}
       <div className="flex bg-gray-100 rounded-full p-1 w-fit">
@@ -104,230 +170,344 @@ const StudyPlan = () => {
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={`px-6 py-2 rounded-full font-semibold text-sm transition-all duration-300 capitalize ${
-              activeTab === tab
-                ? 'text-white shadow-md'
-                : 'text-gray-500 bg-transparent'
+              activeTab === tab ? 'text-white shadow-md' : 'text-gray-500 bg-transparent'
             }`}
-            style={activeTab === tab ? { background: 'linear-gradient(to right, #0f766e, #14b8a6)' } : {}}
+            style={activeTab === tab
+              ? { background: 'linear-gradient(to right, #0f766e, #14b8a6)' }
+              : {}}
           >
             {tab === 'daily' ? '📅 Daily View' : '📆 Weekly View'}
           </button>
         ))}
       </div>
 
-      {/* ══════════════════════════════════ */}
-      {/* ── DAILY VIEW ── */}
-      {/* ══════════════════════════════════ */}
-      {activeTab === 'daily' && (
-        <div className="flex flex-col gap-4">
+      {/* ── Loading ── */}
+      {loading ? (
+        <div className="text-center py-12">
+          <div className="w-10 h-10 rounded-full border-4 border-teal-200 border-t-teal-600 animate-spin mx-auto mb-3" />
+          <p className="text-gray-400 text-sm">Loading your plans...</p>
+        </div>
+      ) : plans.length === 0 ? (
+        // ── No Plans Yet ──
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-12 text-center">
+          <MdCalendarToday size={48} className="mx-auto mb-4 text-gray-300" />
+          <p className="text-gray-500 font-semibold mb-2">Koi plan nahi hai abhi</p>
+          <p className="text-gray-400 text-sm mb-6">
+            "Generate AI Plan" button dabao — AI aapke liye personalized plan banayega
+          </p>
+          <button
+            onClick={() => setShowGenerateModal(true)}
+            className="px-6 py-3 rounded-xl text-white font-semibold text-sm shadow-md"
+            style={{ background: 'linear-gradient(to right, #0f766e, #14b8a6)' }}
+          >
+            <MdAutoAwesome size={16} className="inline mr-2" />
+            Generate My First Plan
+          </button>
+        </div>
+      ) : (
+        <>
+          {/* ══════════════════════════════════ */}
+          {/* ── DAILY VIEW ── */}
+          {/* ══════════════════════════════════ */}
+          {activeTab === 'daily' && activePlan && (
+            <div className="flex flex-col gap-4">
 
-          {/* Day Selector */}
-          <div className="flex gap-2 overflow-x-auto pb-1">
-            {weekDays.map(day => {
-              const dayTasks = plan[day] || []
-              const dayDone = dayTasks.filter(t => t.done).length
-              return (
-                <button
-                  key={day}
-                  onClick={() => setActiveDay(day)}
-                  className={`flex flex-col items-center px-4 py-3 rounded-2xl border-2 min-w-[80px] transition-all duration-200 ${
-                    activeDay === day
-                      ? 'text-white border-transparent shadow-md'
-                      : 'bg-white border-gray-200 text-gray-600 hover:border-teal-300'
-                  }`}
-                  style={activeDay === day ? { background: 'linear-gradient(to bottom, #0f766e, #14b8a6)' } : {}}
-                >
-                  <span className="text-xs font-bold">{day.slice(0, 3)}</span>
-                  <span className="text-lg font-extrabold mt-1">{dayTasks.length}</span>
-                  <span className="text-xs opacity-70">{dayDone}/{dayTasks.length}</span>
-                </button>
-              )
-            })}
-          </div>
-
-          {/* Day Progress */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="font-bold text-gray-700">{activeDay}'s Progress</h3>
-              <span className="text-sm font-bold text-teal-600">{completedCount}/{totalCount} done</span>
-            </div>
-            <div className="w-full bg-gray-100 rounded-full h-3">
-              <div
-                className="h-3 rounded-full transition-all duration-500"
-                style={{
-                  width: `${progressPercent}%`,
-                  background: 'linear-gradient(to right, #0f766e, #14b8a6)',
-                }}
-              />
-            </div>
-            <p className="text-right text-xs text-gray-400 mt-1">{progressPercent}% complete</p>
-          </div>
-
-          {/* Task List */}
-          <div className="flex flex-col gap-3">
-            {currentDayTasks.length === 0 ? (
-              <div className="bg-white rounded-2xl p-8 text-center border border-gray-100">
-                <p className="text-gray-400">🎉 Is din ke liye koi session nahi!</p>
+              {/* Plan Title */}
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4 flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-gray-400">Active Plan</p>
+                  <p className="font-bold text-gray-800">{activePlan.title}</p>
+                </div>
+                <span className="text-xs bg-teal-50 text-teal-600 font-semibold px-3 py-1 rounded-full">
+                  {activePlan.subject}
+                </span>
               </div>
-            ) : (
-              currentDayTasks.map(task => (
-                <div
-                  key={task.id}
-                  onClick={() => toggleDone(activeDay, task.id)}
-                  className={`bg-white rounded-2xl border-2 p-5 flex items-center gap-4 cursor-pointer transition-all duration-200 hover:shadow-md ${
-                    task.done ? 'border-teal-200 bg-teal-50/30' : 'border-gray-100'
-                  }`}
-                >
-                  {/* Checkbox */}
-                  <div className="flex-shrink-0">
-                    {task.done
-                      ? <MdCheckCircle className="text-teal-500" size={28} />
-                      : <MdRadioButtonUnchecked className="text-gray-300" size={28} />
-                    }
-                  </div>
 
-                  {/* Task Info */}
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className={`font-bold text-gray-800 ${task.done ? 'line-through text-gray-400' : ''}`}>
-                        {task.subject}
+              {/* Progress */}
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-bold text-gray-700">Overall Progress</h3>
+                  <span className="text-sm font-bold text-teal-600">
+                    {activePlan.tasks.filter(t => t.isCompleted).length}/
+                    {activePlan.tasks.length} done
+                  </span>
+                </div>
+                <div className="w-full bg-gray-100 rounded-full h-3">
+                  <div
+                    className="h-3 rounded-full transition-all duration-500"
+                    style={{
+                      width: activePlan.tasks.length > 0
+                        ? `${Math.round(
+                            (activePlan.tasks.filter(t => t.isCompleted).length /
+                              activePlan.tasks.length) * 100
+                          )}%`
+                        : '0%',
+                      background: 'linear-gradient(to right, #0f766e, #14b8a6)',
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Task List */}
+              <div className="flex flex-col gap-3">
+                {activePlan.tasks.map(task => (
+                  <div
+                    key={task._id}
+                    onClick={() => !task.isCompleted && handleTaskComplete(activePlan._id, task._id)}
+                    className={`bg-white rounded-2xl border-2 p-5 flex items-center gap-4 transition-all duration-200 hover:shadow-md ${
+                      task.isCompleted
+                        ? 'border-teal-200 bg-teal-50/30'
+                        : 'border-gray-100 cursor-pointer'
+                    }`}
+                  >
+                    {/* Checkbox */}
+                    <div className="flex-shrink-0">
+                      {task.isCompleted
+                        ? <MdCheckCircle className="text-teal-500" size={28} />
+                        : <MdRadioButtonUnchecked className="text-gray-300" size={28} />
+                      }
+                    </div>
+
+                    {/* Task Info */}
+                    <div className="flex-1">
+                      <span className={`font-bold text-gray-800 ${task.isCompleted ? 'line-through text-gray-400' : ''}`}>
+                        {task.description}
                       </span>
-                      <PriorityBadge priority={task.priority} />
+                      {task.dueDate && (
+                        <p className="text-xs text-gray-400 mt-1">
+                          Due: {new Date(task.dueDate).toLocaleDateString('en-US', {
+                            month: 'short', day: 'numeric'
+                          })}
+                        </p>
+                      )}
                     </div>
-                    <p className={`text-sm mt-1 ${task.done ? 'text-gray-300 line-through' : 'text-gray-500'}`}>
-                      {task.topic}
-                    </p>
-                  </div>
 
-                  {/* Time + Duration */}
-                  <div className="text-right flex-shrink-0">
-                    <div className="flex items-center gap-1 justify-end text-gray-400 text-xs mb-1">
-                      <MdCalendarToday size={12} />
-                      {task.time}
-                    </div>
-                    <div className="flex items-center gap-1 justify-end text-teal-600 text-xs font-bold">
-                      <MdAccessTime size={12} />
-                      {task.duration}
-                    </div>
+                    {/* Status */}
+                    {task.isCompleted && (
+                      <span className="text-xs text-teal-500 font-bold flex-shrink-0">
+                        ✓ Done
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ══════════════════════════════════ */}
+          {/* ── WEEKLY VIEW ── */}
+          {/* ══════════════════════════════════ */}
+          {activeTab === 'weekly' && (
+            <div className="flex flex-col gap-4">
+
+              {/* Weekly Summary Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex items-center gap-4">
+                  <div className="p-3 bg-teal-50 rounded-xl">
+                    <MdCalendarToday className="text-teal-500" size={24} />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-400">Total Tasks</p>
+                    <p className="text-2xl font-extrabold text-gray-800">{totalTasks}</p>
                   </div>
                 </div>
-              ))
-            )}
-          </div>
-        </div>
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex items-center gap-4">
+                  <div className="p-3 bg-green-50 rounded-xl">
+                    <MdCheckCircle className="text-green-500" size={24} />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-400">Completed</p>
+                    <p className="text-2xl font-extrabold text-gray-800">{totalDone}</p>
+                  </div>
+                </div>
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex items-center gap-4">
+                  <div className="p-3 bg-red-50 rounded-xl">
+                    <FaBrain className="text-red-400" size={24} />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-400">Total Plans</p>
+                    <p className="text-2xl font-extrabold text-gray-800">{plans.length}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* All Plans List */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {plans.map(plan => {
+                  const done = plan.tasks.filter(t => t.isCompleted).length
+                  const total = plan.tasks.length
+                  const percent = total > 0 ? Math.round((done / total) * 100) : 0
+                  return (
+                    <div key={plan._id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="font-bold text-gray-700 truncate">{plan.title}</h3>
+                        <span className="text-xs text-teal-600 font-semibold bg-teal-50 px-2 py-1 rounded-lg ml-2 flex-shrink-0">
+                          {done}/{total}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-400 mb-3">{plan.subject}</p>
+                      <div className="w-full bg-gray-100 rounded-full h-2 mb-3">
+                        <div
+                          className="h-2 rounded-full transition-all"
+                          style={{
+                            width: `${percent}%`,
+                            background: 'linear-gradient(to right, #0f766e, #14b8a6)',
+                          }}
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1 max-h-32 overflow-y-auto">
+                        {plan.tasks.slice(0, 4).map(task => (
+                          <div key={task._id} className="flex items-center gap-2">
+                            {task.isCompleted
+                              ? <MdCheckCircle className="text-teal-500 flex-shrink-0" size={14} />
+                              : <MdRadioButtonUnchecked className="text-gray-300 flex-shrink-0" size={14} />
+                            }
+                            <span className={`text-xs truncate ${task.isCompleted ? 'line-through text-gray-400' : 'text-gray-600'}`}>
+                              {task.description}
+                            </span>
+                          </div>
+                        ))}
+                        {plan.tasks.length > 4 && (
+                          <p className="text-xs text-gray-400 mt-1">
+                            +{plan.tasks.length - 4} more tasks
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* AI Insight */}
+              <div
+                className="rounded-2xl p-5 text-white flex items-start gap-3"
+                style={{ background: 'linear-gradient(135deg, #0f766e, #14b8a6)' }}
+              >
+                <FaFire size={20} className="flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold text-sm mb-1">🤖 AI Weekly Insight</p>
+                  <p className="text-xs text-white/90 leading-relaxed">
+                    Apne plans ko regularly follow karo — AI aapki consistency track kar raha hai.
+                    Har task complete karo taake AI better recommendations de sake!
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {/* ══════════════════════════════════ */}
-      {/* ── WEEKLY VIEW ── */}
+      {/* ── AI GENERATE MODAL ── */}
       {/* ══════════════════════════════════ */}
-      {activeTab === 'weekly' && (
-        <div className="flex flex-col gap-4">
+      {showGenerateModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8">
 
-          {/* Weekly Summary Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex items-center gap-4">
-              <div className="p-3 bg-teal-50 rounded-xl">
-                <MdCalendarToday className="text-teal-500" size={24} />
-              </div>
-              <div>
-                <p className="text-xs text-gray-400">Total Sessions</p>
-                <p className="text-2xl font-extrabold text-gray-800">{totalTasks}</p>
-              </div>
+            <h2 className="text-xl font-bold text-gray-800 mb-1">
+              🤖 Generate AI Study Plan
+            </h2>
+            <p className="text-gray-400 text-sm mb-6">
+              AI aapke liye personalized plan banayega
+            </p>
+
+            {/* Subject */}
+            <div className="mb-4">
+              <label className="text-sm font-medium text-gray-600 mb-1 block">
+                Subject
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Mathematics, Physics..."
+                value={genSubject}
+                onChange={(e) => setGenSubject(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm outline-none focus:border-teal-400"
+              />
             </div>
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex items-center gap-4">
-              <div className="p-3 bg-green-50 rounded-xl">
-                <MdCheckCircle className="text-green-500" size={24} />
-              </div>
-              <div>
-                <p className="text-xs text-gray-400">Completed</p>
-                <p className="text-2xl font-extrabold text-gray-800">{totalDone}</p>
-              </div>
+
+            {/* Days */}
+            <div className="mb-4">
+              <label className="text-sm font-medium text-gray-600 mb-1 block">
+                Plan Duration (days)
+              </label>
+              <select
+                value={genDays}
+                onChange={(e) => setGenDays(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm outline-none focus:border-teal-400"
+              >
+                <option value="3">3 Days</option>
+                <option value="5">5 Days</option>
+                <option value="7">7 Days</option>
+                <option value="14">14 Days</option>
+              </select>
             </div>
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex items-center gap-4">
-              <div className="p-3 bg-red-50 rounded-xl">
-                <FaBrain className="text-red-400" size={24} />
-              </div>
-              <div>
-                <p className="text-xs text-gray-400">Focus Subject</p>
-                <p className="text-lg font-extrabold text-gray-800">Mathematics</p>
-              </div>
+
+            {/* Daily Hours */}
+            <div className="mb-6">
+              <label className="text-sm font-medium text-gray-600 mb-1 block">
+                Daily Study Hours
+              </label>
+              <select
+                value={genHours}
+                onChange={(e) => setGenHours(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm outline-none focus:border-teal-400"
+              >
+                <option value="1">1 Hour</option>
+                <option value="2">2 Hours</option>
+                <option value="3">3 Hours</option>
+                <option value="4">4 Hours</option>
+              </select>
             </div>
-          </div>
 
-          {/* Weekly Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {weekDays.map(day => {
-              const tasks = plan[day] || []
-              const done = tasks.filter(t => t.done).length
-              return (
-                <div key={day} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-
-                  {/* Day Header */}
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-bold text-gray-700">{day}</h3>
-                    <span className="text-xs text-teal-600 font-semibold bg-teal-50 px-2 py-1 rounded-lg">
-                      {done}/{tasks.length}
-                    </span>
-                  </div>
-
-                  {/* Mini Progress */}
-                  <div className="w-full bg-gray-100 rounded-full h-2 mb-3">
-                    <div
-                      className="h-2 rounded-full transition-all"
-                      style={{
-                        width: tasks.length > 0 ? `${Math.round((done / tasks.length) * 100)}%` : '0%',
-                        background: 'linear-gradient(to right, #0f766e, #14b8a6)',
-                      }}
-                    />
-                  </div>
-
-                  {/* Task Pills */}
-                  <div className="flex flex-col gap-2">
-                    {tasks.map(task => (
-                      <div
-                        key={task.id}
-                        onClick={() => toggleDone(day, task.id)}
-                        className={`flex items-center gap-2 p-2 rounded-xl cursor-pointer transition-all ${
-                          task.done ? 'bg-teal-50' : 'bg-gray-50 hover:bg-gray-100'
-                        }`}
-                      >
-                        {task.done
-                          ? <MdCheckCircle className="text-teal-500 flex-shrink-0" size={16} />
-                          : <MdRadioButtonUnchecked className="text-gray-300 flex-shrink-0" size={16} />
-                        }
-                        <span className={`text-xs font-medium truncate ${task.done ? 'line-through text-gray-400' : 'text-gray-600'}`}>
-                          {task.subject}
-                        </span>
-                        <span className="ml-auto text-xs text-gray-400 flex-shrink-0">{task.duration}</span>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Go to Day */}
-                  <button
-                    onClick={() => { setActiveDay(day); setActiveTab('daily') }}
-                    className="mt-3 w-full text-xs text-teal-600 font-semibold hover:underline"
-                  >
-                    View Details →
-                  </button>
+            {/* Generated Plan Preview */}
+            {generatedPlan && (
+              <div className="mb-6 p-4 bg-teal-50 border border-teal-200 rounded-2xl">
+                <p className="text-sm font-bold text-teal-700 mb-2">
+                  ✅ Plan Ready: {generatedPlan.title}
+                </p>
+                <div className="flex flex-col gap-1 max-h-40 overflow-y-auto">
+                  {generatedPlan.tasks.map((task, i) => (
+                    <p key={i} className="text-xs text-teal-600">
+                      {i + 1}. {task.description}
+                    </p>
+                  ))}
                 </div>
-              )
-            })}
-          </div>
+              </div>
+            )}
 
-          {/* AI Insight */}
-          <div
-            className="rounded-2xl p-5 text-white flex items-start gap-3"
-            style={{ background: 'linear-gradient(135deg, #0f766e, #14b8a6)' }}
-          >
-            <FaFire size={20} className="flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="font-bold text-sm mb-1">🤖 AI Weekly Insight</p>
-              <p className="text-xs text-white/90 leading-relaxed">
-                Mathematics aur Chemistry aapke weakest subjects hain. Is hafte
-                in par zyada focus rakho. AI ne in subjects ko har din schedule
-                mein rakkha hai. Consistency se follow karo!
-              </p>
+            {/* Buttons */}
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowGenerateModal(false)
+                  setGeneratedPlan(null)
+                  setGenSubject('')
+                }}
+                className="flex-1 py-3 rounded-xl border border-gray-200 text-gray-500 font-semibold text-sm hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+
+              {!generatedPlan ? (
+                <button
+                  onClick={handleGenerate}
+                  disabled={generating}
+                  className="flex-1 py-3 rounded-xl text-white font-semibold text-sm shadow-md disabled:opacity-60"
+                  style={{ background: 'linear-gradient(to right, #0f766e, #14b8a6)' }}
+                >
+                  {generating ? 'Generating...' : '✨ Generate'}
+                </button>
+              ) : (
+                <button
+                  onClick={handleSavePlan}
+                  disabled={saving}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-white font-semibold text-sm shadow-md disabled:opacity-60"
+                  style={{ background: 'linear-gradient(to right, #0f766e, #14b8a6)' }}
+                >
+                  <MdSave size={16} />
+                  {saving ? 'Saving...' : 'Save Plan'}
+                </button>
+              )}
             </div>
           </div>
         </div>

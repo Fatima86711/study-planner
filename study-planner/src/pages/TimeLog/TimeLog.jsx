@@ -1,16 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { MdPlayArrow, MdStop, MdAccessTime, MdBook, MdHistory } from 'react-icons/md'
 import { FaFire } from 'react-icons/fa'
+import api from '../../services/api'
 
-// ── Dummy Data ──
 const subjects = ['Mathematics', 'Physics', 'Chemistry', 'English', 'Computer Science', 'Biology']
-
-const initialHistory = [
-  { id: 1, subject: 'Mathematics', topic: 'Calculus', duration: '1h 30m', date: 'Mar 26', time: '9:00 AM' },
-  { id: 2, subject: 'Physics', topic: 'Newton Laws', duration: '1h 00m', date: 'Mar 26', time: '11:00 AM' },
-  { id: 3, subject: 'Chemistry', topic: 'Periodic Table', duration: '45m', date: 'Mar 25', time: '2:00 PM' },
-  { id: 4, subject: 'English', topic: 'Essay Writing', duration: '30m', date: 'Mar 25', time: '4:00 PM' },
-]
 
 // ── Format seconds to hh:mm:ss ──
 const formatTime = (seconds) => {
@@ -33,11 +26,35 @@ const TimeLog = () => {
   const [topic, setTopic] = useState('')
   const [isRunning, setIsRunning] = useState(false)
   const [elapsed, setElapsed] = useState(0)
-  const [history, setHistory] = useState(initialHistory)
+  const [history, setHistory] = useState([])
+  const [todayCount, setTodayCount] = useState(0)
   const [sessionSaved, setSessionSaved] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
   const intervalRef = useRef(null)
 
-  // ── Timer Logic ──
+  // ── History Fetch ──────────────────────────────────────────────────────────
+  useEffect(() => {
+    const fetchHistory = async () => {
+      try {
+        const [historyRes, todayRes] = await Promise.all([
+          api.get('/api/study/history'),
+          api.get('/api/study/today'),
+        ])
+        setHistory(historyRes.data.sessions)
+        setTodayCount(todayRes.data.sessions.length)
+      } catch (err) {
+        setError('Failed to load history')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchHistory()
+  }, [])
+
+  // ── Timer Logic ────────────────────────────────────────────────────────────
   useEffect(() => {
     if (isRunning) {
       intervalRef.current = setInterval(() => {
@@ -49,40 +66,47 @@ const TimeLog = () => {
     return () => clearInterval(intervalRef.current)
   }, [isRunning])
 
+  // ── Start Session ──────────────────────────────────────────────────────────
   const handleStart = () => {
     if (!selectedSubject) return alert('Pehle subject select karo!')
-    if (!topic.trim()) return alert('Topic ka naam likhо!')
+    if (!topic.trim()) return alert('Topic ka naam likho!')
     setIsRunning(true)
     setSessionSaved(false)
     setElapsed(0)
+    setError('')
   }
 
-  const handleStop = () => {
+  // ── Stop Session + Save to Backend ────────────────────────────────────────
+  const handleStop = async () => {
     setIsRunning(false)
+
     if (elapsed < 10) return // Too short — ignore
 
-    // Save to history
-    const now = new Date()
-    const newSession = {
-      id: Date.now(),
-      subject: selectedSubject,
-      topic: topic,
-      duration: formatDuration(elapsed),
-      date: now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-      time: now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-    }
-    setHistory(prev => [newSession, ...prev])
-    setSessionSaved(true)
-    setElapsed(0)
-    setTopic('')
-    setSelectedSubject('')
-  }
+    const durationInMinutes = Math.ceil(elapsed / 60) // Seconds to minutes
 
-  // ── Today's total time per subject ──
-  const todayStats = subjects.map(sub => {
-    const todaySessions = history.filter(h => h.subject === sub && h.date === 'Mar 27')
-    return { subject: sub, sessions: todaySessions.length }
-  }).filter(s => s.sessions > 0)
+    setSaving(true)
+
+    try {
+      const response = await api.post('/api/study/session', {
+        subject: selectedSubject,
+        topic: topic,
+        duration: durationInMinutes,
+      })
+
+      // Naya session history mein add karo — upar se
+      setHistory(prev => [response.data.session, ...prev])
+      setTodayCount(prev => prev + 1)
+      setSessionSaved(true)
+
+    } catch (err) {
+      setError('Session save nahi hua — please retry')
+    } finally {
+      setSaving(false)
+      setElapsed(0)
+      setTopic('')
+      setSelectedSubject('')
+    }
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -90,8 +114,17 @@ const TimeLog = () => {
       {/* ── Page Title ── */}
       <div>
         <h1 className="text-2xl font-bold text-gray-800">Daily Time Log</h1>
-        <p className="text-gray-400 text-sm mt-1">Track your study sessions — AI will analyze your patterns</p>
+        <p className="text-gray-400 text-sm mt-1">
+          Track your study sessions — AI will analyze your patterns
+        </p>
       </div>
+
+      {/* ── Error Message ── */}
+      {error && (
+        <div className="px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm">
+          {error}
+        </div>
+      )}
 
       {/* ── Row 1: Timer Card + Quick Stats ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -142,16 +175,21 @@ const TimeLog = () => {
             style={{ background: 'linear-gradient(135deg, #0f766e, #14b8a6)' }}
           >
             <p className="text-white/70 text-sm mb-1">
-              {isRunning ? `Studying: ${selectedSubject} — ${topic}` : 'Session Timer'}
+              {isRunning
+                ? `Studying: ${selectedSubject} — ${topic}`
+                : 'Session Timer'}
             </p>
             <p className="text-5xl font-extrabold text-white tracking-widest">
               {formatTime(elapsed)}
             </p>
             {isRunning && (
               <div className="flex items-center justify-center gap-1 mt-2">
-                <div className="w-2 h-2 rounded-full bg-white/80 animate-bounce" style={{ animationDelay: '0ms' }} />
-                <div className="w-2 h-2 rounded-full bg-white/80 animate-bounce" style={{ animationDelay: '150ms' }} />
-                <div className="w-2 h-2 rounded-full bg-white/80 animate-bounce" style={{ animationDelay: '300ms' }} />
+                <div className="w-2 h-2 rounded-full bg-white/80 animate-bounce"
+                  style={{ animationDelay: '0ms' }} />
+                <div className="w-2 h-2 rounded-full bg-white/80 animate-bounce"
+                  style={{ animationDelay: '150ms' }} />
+                <div className="w-2 h-2 rounded-full bg-white/80 animate-bounce"
+                  style={{ animationDelay: '300ms' }} />
               </div>
             )}
           </div>
@@ -170,10 +208,11 @@ const TimeLog = () => {
             ) : (
               <button
                 onClick={handleStop}
-                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-white font-semibold transition-transform hover:scale-105 shadow-md bg-red-500"
+                disabled={saving}
+                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-white font-semibold transition-transform hover:scale-105 shadow-md bg-red-500 disabled:opacity-60"
               >
                 <MdStop size={22} />
-                Stop & Save
+                {saving ? 'Saving...' : 'Stop & Save'}
               </button>
             )}
           </div>
@@ -196,7 +235,7 @@ const TimeLog = () => {
               <h3 className="font-bold text-gray-700 text-sm">Today's Sessions</h3>
             </div>
             <p className="text-4xl font-extrabold text-gray-800">
-              {history.filter(h => h.date === 'Mar 26').length}
+              {todayCount}
             </p>
             <p className="text-xs text-gray-400 mt-1">Sessions completed today</p>
           </div>
@@ -207,7 +246,9 @@ const TimeLog = () => {
               <MdBook className="text-teal-500" />
               <h3 className="font-bold text-gray-700 text-sm">Total Logged</h3>
             </div>
-            <p className="text-4xl font-extrabold text-gray-800">{history.length}</p>
+            <p className="text-4xl font-extrabold text-gray-800">
+              {history.length}
+            </p>
             <p className="text-xs text-gray-400 mt-1">All time sessions</p>
           </div>
 
@@ -231,34 +272,54 @@ const TimeLog = () => {
           Session History
         </h2>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-xs text-gray-400 border-b border-gray-100">
-                <th className="pb-3 font-semibold">Subject</th>
-                <th className="pb-3 font-semibold">Topic</th>
-                <th className="pb-3 font-semibold">Duration</th>
-                <th className="pb-3 font-semibold">Date</th>
-                <th className="pb-3 font-semibold">Time</th>
-              </tr>
-            </thead>
-            <tbody>
-              {history.map((session) => (
-                <tr key={session.id} className="border-b border-gray-50 hover:bg-gray-50 transition-all">
-                  <td className="py-3">
-                    <span className="px-3 py-1 rounded-full text-xs font-semibold bg-teal-50 text-teal-600">
-                      {session.subject}
-                    </span>
-                  </td>
-                  <td className="py-3 text-gray-600">{session.topic}</td>
-                  <td className="py-3 font-bold text-gray-800">{session.duration}</td>
-                  <td className="py-3 text-gray-400">{session.date}</td>
-                  <td className="py-3 text-gray-400">{session.time}</td>
+        {loading ? (
+          <div className="text-center py-8">
+            <div className="w-8 h-8 rounded-full border-4 border-teal-200 border-t-teal-600 animate-spin mx-auto mb-2" />
+            <p className="text-gray-400 text-sm">Loading history...</p>
+          </div>
+        ) : history.length === 0 ? (
+          <div className="text-center py-8 text-gray-400">
+            <MdHistory size={40} className="mx-auto mb-2 opacity-30" />
+            <p className="text-sm">No sessions yet — start your first session above!</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs text-gray-400 border-b border-gray-100">
+                  <th className="pb-3 font-semibold">Subject</th>
+                  <th className="pb-3 font-semibold">Topic</th>
+                  <th className="pb-3 font-semibold">Duration</th>
+                  <th className="pb-3 font-semibold">Date</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {history.map((session) => (
+                  <tr
+                    key={session._id}
+                    className="border-b border-gray-50 hover:bg-gray-50 transition-all"
+                  >
+                    <td className="py-3">
+                      <span className="px-3 py-1 rounded-full text-xs font-semibold bg-teal-50 text-teal-600">
+                        {session.subject}
+                      </span>
+                    </td>
+                    <td className="py-3 text-gray-600">{session.topic}</td>
+                    <td className="py-3 font-bold text-gray-800">
+                      {formatDuration(session.duration * 60)}
+                    </td>
+                    <td className="py-3 text-gray-400">
+                      {new Date(session.date).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                      })}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
     </div>

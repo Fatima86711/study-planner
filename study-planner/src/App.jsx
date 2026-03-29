@@ -9,9 +9,12 @@ import Quiz from './pages/Quiz/Quiz'
 import Notes from './pages/Notes/Notes'
 import Layout from './components/Layout'
 import Profile from './pages/profile/Profile'
+import { AuthProvider } from './context/AuthContext'
+import ProtectedRoute from './components/ProtectedRoute'
 
 const App = () => {
   return (
+    <AuthProvider>
     <BrowserRouter>
       <Routes>
         {/* Default route — seedha Login par bhejo */}
@@ -28,9 +31,18 @@ const App = () => {
         <Route path="/timelog" element={<Layout><TimeLog /></Layout>} />
         <Route path="/studyplan" element={<Layout><StudyPlan /></Layout>} />
         <Route path="/quiz" element={<Layout><Quiz /></Layout>} />
-        <Route path="/notes" element={<Layout><Notes /></Layout>} />  
+        <Route path="/notes" element={<Layout><Notes /></Layout>} /> 
+        <Route
+  path="/profile"
+  element={
+    <ProtectedRoute>
+      <Layout><Profile /></Layout>
+    </ProtectedRoute>
+  }
+/> 
         </Routes>
     </BrowserRouter>
+    </AuthProvider>
   )
 }
 

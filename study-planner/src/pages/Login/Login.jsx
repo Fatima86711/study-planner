@@ -1,12 +1,78 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import useAuth from '../../hooks/useAuth'
 
 const Login = () => {
   const [isLogin, setIsLogin] = useState(true)
   const navigate = useNavigate()
+  const { login, register } = useAuth()
 
-  const handleSubmit = () => {
-    navigate('/dashboard')
+  // ── Form State ──────────────────────────────────────────────────────────────
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+  })
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  // ── Input Change Handler ────────────────────────────────────────────────────
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value })
+    setError('') // Likhte waqt error hata do
+  }
+
+  // ── Submit Handler ──────────────────────────────────────────────────────────
+  const handleSubmit = async () => {
+    setError('')
+
+    // ── Validation ────────────────────────────────────────────────────────────
+    if (!formData.email || !formData.password) {
+      return setError('Please fill in all fields')
+    }
+
+    if (!isLogin && !formData.name) {
+      return setError('Please enter your name')
+    }
+
+    if (!isLogin && formData.password !== formData.confirmPassword) {
+      return setError('Passwords do not match')
+    }
+
+    if (formData.password.length < 6) {
+      return setError('Password must be at least 6 characters')
+    }
+
+    // ── API Call ──────────────────────────────────────────────────────────────
+    setLoading(true)
+
+    try {
+      if (isLogin) {
+        // Login
+        await login(formData.email, formData.password)
+        navigate('/dashboard')
+      } else {
+        // Register — phir login page par le jao
+        await register(formData.name, formData.email, formData.password)
+        setIsLogin(true)
+        setFormData({ name: '', email: '', password: '', confirmPassword: '' })
+        setError('')
+        alert('Account created! Please login.')
+      }
+    } catch (err) {
+      // Backend se jo message aaye woh dikhao
+      setError(err.response?.data?.message || 'Something went wrong')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // ── Toggle — Login/Signup switch karo ─────────────────────────────────────
+  const handleToggle = (loginMode) => {
+    setIsLogin(loginMode)
+    setError('')
+    setFormData({ name: '', email: '', password: '', confirmPassword: '' })
   }
 
   return (
@@ -32,7 +98,7 @@ const Login = () => {
           </p>
         </div>
 
-        {/* Stats Row — Prosperix style */}
+        {/* Stats Row */}
         <div className="flex gap-8">
           <div>
             <div className="text-3xl font-bold">98%</div>
@@ -53,25 +119,21 @@ const Login = () => {
       <div className="w-full lg:w-1/2 flex items-center justify-center bg-gray-50 p-8">
         <div className="w-full max-w-md">
 
-          {/* Toggle Buttons — Login / Signup */}
+          {/* Toggle Buttons */}
           <div className="flex bg-gray-200 rounded-full p-1 mb-8 w-fit mx-auto">
             <button
-              onClick={() => setIsLogin(true)}
+              onClick={() => handleToggle(true)}
               className={`px-8 py-2 rounded-full font-semibold text-sm transition-all duration-300 ${
-                isLogin
-                  ? 'text-white shadow-md'
-                  : 'text-gray-500 bg-transparent'
+                isLogin ? 'text-white shadow-md' : 'text-gray-500 bg-transparent'
               }`}
               style={isLogin ? { background: 'linear-gradient(to right, #0f766e, #14b8a6)' } : {}}
             >
               Login
             </button>
             <button
-              onClick={() => setIsLogin(false)}
+              onClick={() => handleToggle(false)}
               className={`px-8 py-2 rounded-full font-semibold text-sm transition-all duration-300 ${
-                !isLogin
-                  ? 'text-white shadow-md'
-                  : 'text-gray-500 bg-transparent'
+                !isLogin ? 'text-white shadow-md' : 'text-gray-500 bg-transparent'
               }`}
               style={!isLogin ? { background: 'linear-gradient(to right, #0f766e, #14b8a6)' } : {}}
             >
@@ -91,10 +153,17 @@ const Login = () => {
                 : 'Sign up to start your AI study plan'}
             </p>
 
+            {/* ── Error Message ─────────────────────────────────────────────── */}
+            {error && (
+              <div className="mb-4 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm">
+                {error}
+              </div>
+            )}
+
             {/* Form Fields */}
             <div className="flex flex-col gap-4">
 
-              {/* Name field — only on signup */}
+              {/* Name — only signup */}
               {!isLogin && (
                 <div>
                   <label className="text-sm font-medium text-gray-600 mb-1 block">
@@ -102,8 +171,11 @@ const Login = () => {
                   </label>
                   <input
                     type="text"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleChange}
                     placeholder="Enter your name"
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm outline-none focus:border-purple-400 transition-all"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm outline-none focus:border-teal-400 transition-all"
                   />
                 </div>
               )}
@@ -115,8 +187,11 @@ const Login = () => {
                 </label>
                 <input
                   type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
                   placeholder="Enter your email"
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm outline-none focus:border-purple-400 transition-all"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm outline-none focus:border-teal-400 transition-all"
                 />
               </div>
 
@@ -127,8 +202,11 @@ const Login = () => {
                 </label>
                 <input
                   type="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
                   placeholder="Enter your password"
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm outline-none focus:border-purple-400 transition-all"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm outline-none focus:border-teal-400 transition-all"
                 />
               </div>
 
@@ -140,8 +218,11 @@ const Login = () => {
                   </label>
                   <input
                     type="password"
+                    name="confirmPassword"
+                    value={formData.confirmPassword}
+                    onChange={handleChange}
                     placeholder="Re-enter your password"
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm outline-none focus:border-purple-400 transition-all"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm outline-none focus:border-teal-400 transition-all"
                   />
                 </div>
               )}
@@ -149,7 +230,7 @@ const Login = () => {
               {/* Forgot Password */}
               {isLogin && (
                 <div className="text-right">
-                  <span className="text-sm text-purple-600 cursor-pointer hover:underline">
+                  <span className="text-sm text-teal-600 cursor-pointer hover:underline">
                     Forgot password?
                   </span>
                 </div>
@@ -158,10 +239,14 @@ const Login = () => {
               {/* Submit Button */}
               <button
                 onClick={handleSubmit}
-                className="w-full py-3 rounded-xl text-white font-semibold text-sm mt-2 transition-transform hover:scale-105 shadow-md"
+                disabled={loading}
+                className="w-full py-3 rounded-xl text-white font-semibold text-sm mt-2 transition-transform hover:scale-105 shadow-md disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100"
                 style={{ background: 'linear-gradient(to right, #0f766e, #14b8a6)' }}
               >
-                {isLogin ? 'Login →' : 'Create Account →'}
+                {loading
+                  ? 'Please wait...'
+                  : isLogin ? 'Login →' : 'Create Account →'
+                }
               </button>
 
             </div>
@@ -171,8 +256,8 @@ const Login = () => {
           <p className="text-center text-sm text-gray-400 mt-6">
             {isLogin ? "Don't have an account? " : 'Already have an account? '}
             <span
-              onClick={() => setIsLogin(!isLogin)}
-              className="text-purple-600 font-semibold cursor-pointer hover:underline"
+              onClick={() => handleToggle(!isLogin)}
+              className="text-teal-600 font-semibold cursor-pointer hover:underline"
             >
               {isLogin ? 'Sign Up' : 'Login'}
             </span>

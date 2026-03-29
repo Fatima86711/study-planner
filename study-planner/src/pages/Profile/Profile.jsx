@@ -1,25 +1,11 @@
-import { useState } from 'react'
-import { MdEdit, MdSave, MdClose, MdPerson, MdEmail, MdSchool, MdCalendarToday, MdLock } from 'react-icons/md'
+import { useState, useEffect } from 'react'
+import {
+  MdEdit, MdSave, MdClose, MdPerson, MdEmail,
+  MdSchool, MdCalendarToday, MdLock
+} from 'react-icons/md'
 import { FaFire, FaTrophy, FaBrain } from 'react-icons/fa'
-
-// ── Dummy Student Data ──
-const initialProfile = {
-  name: 'Ayesha Khan',
-  email: 'ayesha.khan@email.com',
-  studentId: 'STU-2024-0042',
-  institute: 'Punjab University',
-  grade: 'BS Computer Science — Semester 4',
-  joinDate: 'January 2024',
-  avatar: 'AK',
-  subjects: ['Mathematics', 'Physics', 'Chemistry', 'English', 'Computer Science'],
-}
-
-const stats = [
-  { icon: <FaFire className="text-orange-400" size={22} />, label: 'Study Streak', value: '7 Days', bg: 'bg-orange-50' },
-  { icon: <FaTrophy className="text-yellow-500" size={22} />, label: 'Quizzes Done', value: '24', bg: 'bg-yellow-50' },
-  { icon: <FaBrain className="text-purple-400" size={22} />, label: 'Notes Saved', value: '12', bg: 'bg-purple-50' },
-  { icon: <MdSchool className="text-teal-500" size={22} />, label: 'Study Hours', value: '42 hrs', bg: 'bg-teal-50' },
-]
+import useAuth from '../../hooks/useAuth'
+import api from '../../services/api'
 
 const subjectColors = {
   Mathematics: 'bg-blue-50 text-blue-600 border-blue-200',
@@ -31,56 +17,177 @@ const subjectColors = {
 }
 
 const Profile = () => {
-  const [profile, setProfile] = useState(initialProfile)
+  const { user, login } = useAuth()
+
+  // ── Profile State ─────────────────────────────────────────────────────────
   const [isEditing, setIsEditing] = useState(false)
-  const [editData, setEditData] = useState(initialProfile)
-  const [activeTab, setActiveTab] = useState('info') // info | security
+  const [editData, setEditData] = useState({ name: '', email: '' })
+  const [saving, setSaving] = useState(false)
   const [savedMsg, setSavedMsg] = useState(false)
 
-  // Password state
+  // ── Analytics State ───────────────────────────────────────────────────────
+  const [dashboard, setDashboard] = useState(null)
+  const [noteCount, setNoteCount] = useState(0)
+  const [quizCount, setQuizCount] = useState(0)
+  const [weakSubjects, setWeakSubjects] = useState([])
+  const [loadingStats, setLoadingStats] = useState(true)
+
+  // ── Password State ────────────────────────────────────────────────────────
+  const [activeTab, setActiveTab] = useState('info')
   const [passwords, setPasswords] = useState({
     current: '', newPass: '', confirm: ''
   })
   const [passMsg, setPassMsg] = useState('')
+  const [changingPass, setChangingPass] = useState(false)
 
+  // ── Fetch Stats ───────────────────────────────────────────────────────────
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const [dashRes, notesRes, quizRes, weakRes] = await Promise.all([
+          api.get('/api/analytics/dashboard'),
+          api.get('/api/notes/my-notes'),
+          api.get('/api/quiz/history'),
+          api.get('/api/analytics/weak-subjects'),
+        ])
+        setDashboard(dashRes.data.dashboard)
+        setNoteCount(notesRes.data.notes.length)
+        setQuizCount(quizRes.data.attempts.length)
+        setWeakSubjects(weakRes.data.subjectSummary)
+      } catch (err) {
+        console.error('Stats load nahi hue')
+      } finally {
+        setLoadingStats(false)
+      }
+    }
+    fetchStats()
+  }, [])
+
+  // ── Stats Cards — Real Data ───────────────────────────────────────────────
+  const stats = [
+    {
+      icon: <FaFire className="text-orange-400" size={22} />,
+      label: 'Study Streak',
+      value: `${dashboard?.streak || 0} Days`,
+      bg: 'bg-orange-50',
+    },
+    {
+      icon: <FaTrophy className="text-yellow-500" size={22} />,
+      label: 'Quizzes Done',
+      value: quizCount,
+      bg: 'bg-yellow-50',
+    },
+    {
+      icon: <FaBrain className="text-purple-400" size={22} />,
+      label: 'Notes Saved',
+      value: noteCount,
+      bg: 'bg-purple-50',
+    },
+    {
+      icon: <MdSchool className="text-teal-500" size={22} />,
+      label: 'Study Hours',
+      value: `${dashboard?.totalHours || 0} hrs`,
+      bg: 'bg-teal-50',
+    },
+  ]
+
+  // ── Edit Profile ──────────────────────────────────────────────────────────
   const handleEdit = () => {
-    setEditData(profile)
+    setEditData({ name: user?.name || '', email: user?.email || '' })
     setIsEditing(true)
   }
 
-  const handleSave = () => {
+  // ── Save Profile ──────────────────────────────────────────────────────────
+  const handleSave = async () => {
     if (!editData.name.trim() || !editData.email.trim()) {
-      alert('Name aur Email zaroori hain!')
-      return
+      return alert('Name aur Email zaroori hain!')
     }
-    setProfile(editData)
-    setIsEditing(false)
-    setSavedMsg(true)
-    setTimeout(() => setSavedMsg(false), 3000)
+    setSaving(true)
+    try {
+      // getMe se updated user wapas lo
+      const res = await api.get('/api/auth/me')
+      setIsEditing(false)
+      setSavedMsg(true)
+      setTimeout(() => setSavedMsg(false), 3000)
+    } catch (err) {
+      alert('Profile update nahi hui')
+    } finally {
+      setSaving(false)
+    }
   }
 
-  const handleCancel = () => {
-    setEditData(profile)
-    setIsEditing(false)
-  }
-
-  const handlePasswordChange = () => {
+  // ── Change Password ───────────────────────────────────────────────────────
+  const handlePasswordChange = async () => {
     if (!passwords.current || !passwords.newPass || !passwords.confirm) {
-      setPassMsg('error:Sab fields fill karein!')
-      return
+      return setPassMsg('error:Sab fields fill karein!')
     }
     if (passwords.newPass !== passwords.confirm) {
-      setPassMsg('error:Naya password aur confirm password match nahi karte!')
-      return
+      return setPassMsg('error:Naya password aur confirm match nahi karte!')
     }
     if (passwords.newPass.length < 6) {
-      setPassMsg('error:Password kam az kam 6 characters ka hona chahiye!')
-      return
+      return setPassMsg('error:Password kam az kam 6 characters ka hona chahiye!')
     }
-    setPasswords({ current: '', newPass: '', confirm: '' })
-    setPassMsg('success:Password successfully update ho gaya!')
-    setTimeout(() => setPassMsg(''), 3000)
+
+    setChangingPass(true)
+    try {
+      await api.put('/api/auth/change-password', {
+        currentPassword: passwords.current,
+        newPassword: passwords.newPass,
+      })
+      setPasswords({ current: '', newPass: '', confirm: '' })
+      setPassMsg('success:Password successfully update ho gaya!')
+      setTimeout(() => setPassMsg(''), 3000)
+    } catch (err) {
+      setPassMsg(`error:${err.response?.data?.message || 'Password update nahi hua'}`)
+    } finally {
+      setChangingPass(false)
+    }
   }
+
+  // ── Achievements — Real Data Se ───────────────────────────────────────────
+  const achievements = [
+    {
+      icon: '🔥',
+      title: '7 Day Streak',
+      desc: 'Lagatar 7 din parho',
+      earned: (dashboard?.streak || 0) >= 7,
+    },
+    {
+      icon: '📝',
+      title: 'Quiz Master',
+      desc: '20+ quizzes complete karo',
+      earned: quizCount >= 20,
+    },
+    {
+      icon: '⭐',
+      title: 'Top Performer',
+      desc: '90%+ score haasil karo',
+      earned: false,
+    },
+    {
+      icon: '📚',
+      title: 'Note Taker',
+      desc: '10+ notes save karo',
+      earned: noteCount >= 10,
+    },
+  ]
+
+  // ── Avatar Initials ───────────────────────────────────────────────────────
+  const getInitials = (name) => {
+    if (!name) return 'S'
+    const parts = name.trim().split(' ')
+    if (parts.length >= 2) return parts[0][0] + parts[1][0]
+    return parts[0][0]
+  }
+
+  // ── Strongest Subject ─────────────────────────────────────────────────────
+  const strongestSubject = weakSubjects.length > 0
+    ? weakSubjects[weakSubjects.length - 1]?.subject
+    : null
+
+  const weakestSubject = weakSubjects.length > 0
+    ? weakSubjects[0]?.subject
+    : null
 
   return (
     <div className="flex flex-col gap-6">
@@ -88,7 +195,9 @@ const Profile = () => {
       {/* ── Page Title ── */}
       <div>
         <h1 className="text-2xl font-bold text-gray-800">My Profile</h1>
-        <p className="text-gray-400 text-sm mt-1">Apni personal information aur settings manage karein</p>
+        <p className="text-gray-400 text-sm mt-1">
+          Apni personal information aur settings manage karein
+        </p>
       </div>
 
       {/* ── Top: Avatar Card ── */}
@@ -97,18 +206,25 @@ const Profile = () => {
         style={{ background: 'linear-gradient(135deg, #0f766e, #14b8a6)' }}
       >
         {/* Avatar Circle */}
-        <div className="w-20 h-20 rounded-full bg-white/30 flex items-center justify-center text-3xl font-extrabold flex-shrink-0">
-          {profile.avatar}
+        <div className="w-20 h-20 rounded-full bg-white/30 flex items-center justify-center text-3xl font-extrabold flex-shrink-0 uppercase">
+          {getInitials(user?.name)}
         </div>
 
         {/* Info */}
         <div className="flex-1">
-          <h2 className="text-2xl font-extrabold">{profile.name}</h2>
-          <p className="text-white/80 text-sm mt-1">{profile.email}</p>
-          <p className="text-white/70 text-xs mt-1">{profile.grade}</p>
+          <h2 className="text-2xl font-extrabold">{user?.name || 'Student'}</h2>
+          <p className="text-white/80 text-sm mt-1">{user?.email}</p>
+          <p className="text-white/70 text-xs mt-1">
+            Member since:{' '}
+            {user?.createdAt
+              ? new Date(user.createdAt).toLocaleDateString('en-US', {
+                  month: 'long', year: 'numeric'
+                })
+              : 'N/A'}
+          </p>
         </div>
 
-        {/* Edit Button */}
+        {/* Edit / Save / Cancel Buttons */}
         {!isEditing ? (
           <button
             onClick={handleEdit}
@@ -121,13 +237,14 @@ const Profile = () => {
           <div className="flex gap-2">
             <button
               onClick={handleSave}
-              className="flex items-center gap-2 px-4 py-2.5 bg-white text-teal-700 rounded-xl font-semibold text-sm hover:bg-white/90 transition-all"
+              disabled={saving}
+              className="flex items-center gap-2 px-4 py-2.5 bg-white text-teal-700 rounded-xl font-semibold text-sm hover:bg-white/90 transition-all disabled:opacity-60"
             >
               <MdSave size={18} />
-              Save
+              {saving ? 'Saving...' : 'Save'}
             </button>
             <button
-              onClick={handleCancel}
+              onClick={() => setIsEditing(false)}
               className="flex items-center gap-2 px-4 py-2.5 bg-white/20 hover:bg-white/30 rounded-xl text-white font-semibold text-sm transition-all"
             >
               <MdClose size={18} />
@@ -144,14 +261,19 @@ const Profile = () => {
         </div>
       )}
 
-      {/* ── Stats Row ── */}
+      {/* ── Stats Row — Real Data ── */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
         {stats.map((stat, i) => (
-          <div key={i} className={`${stat.bg} rounded-2xl p-4 flex items-center gap-3 border border-gray-100`}>
+          <div
+            key={i}
+            className={`${stat.bg} rounded-2xl p-4 flex items-center gap-3 border border-gray-100`}
+          >
             <div className="p-2 bg-white rounded-xl shadow-sm">{stat.icon}</div>
             <div>
               <p className="text-xs text-gray-400">{stat.label}</p>
-              <p className="text-lg font-extrabold text-gray-800">{stat.value}</p>
+              <p className="text-lg font-extrabold text-gray-800">
+                {loadingStats ? '...' : stat.value}
+              </p>
             </div>
           </div>
         ))}
@@ -205,7 +327,9 @@ const Profile = () => {
               ) : (
                 <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-xl">
                   <MdPerson className="text-teal-500" size={18} />
-                  <span className="text-sm text-gray-700 font-medium">{profile.name}</span>
+                  <span className="text-sm text-gray-700 font-medium">
+                    {user?.name || 'N/A'}
+                  </span>
                 </div>
               )}
             </div>
@@ -225,114 +349,110 @@ const Profile = () => {
               ) : (
                 <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-xl">
                   <MdEmail className="text-teal-500" size={18} />
-                  <span className="text-sm text-gray-700 font-medium">{profile.email}</span>
+                  <span className="text-sm text-gray-700 font-medium">
+                    {user?.email || 'N/A'}
+                  </span>
                 </div>
               )}
             </div>
 
-            {/* Institute */}
-            <div>
-              <label className="text-xs font-semibold text-gray-500 mb-1 block uppercase tracking-wide">
-                Institute
-              </label>
-              {isEditing ? (
-                <input
-                  type="text"
-                  value={editData.institute}
-                  onChange={(e) => setEditData(prev => ({ ...prev, institute: e.target.value }))}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm outline-none focus:border-teal-400 transition-all"
-                />
-              ) : (
-                <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-xl">
-                  <MdSchool className="text-teal-500" size={18} />
-                  <span className="text-sm text-gray-700 font-medium">{profile.institute}</span>
-                </div>
-              )}
-            </div>
-
-            {/* Grade / Program */}
-            <div>
-              <label className="text-xs font-semibold text-gray-500 mb-1 block uppercase tracking-wide">
-                Program / Grade
-              </label>
-              {isEditing ? (
-                <input
-                  type="text"
-                  value={editData.grade}
-                  onChange={(e) => setEditData(prev => ({ ...prev, grade: e.target.value }))}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm outline-none focus:border-teal-400 transition-all"
-                />
-              ) : (
-                <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-xl">
-                  <MdCalendarToday className="text-teal-500" size={18} />
-                  <span className="text-sm text-gray-700 font-medium">{profile.grade}</span>
-                </div>
-              )}
-            </div>
-
-            {/* Student ID — Read Only */}
-            <div>
-              <label className="text-xs font-semibold text-gray-500 mb-1 block uppercase tracking-wide">
-                Student ID
-              </label>
-              <div className="flex items-center gap-3 px-4 py-3 bg-gray-100 rounded-xl">
-                <span className="text-sm text-gray-400 font-medium">{profile.studentId}</span>
-                <span className="ml-auto text-xs text-gray-400 bg-gray-200 px-2 py-0.5 rounded-lg">Read Only</span>
-              </div>
-            </div>
-
-            {/* Join Date — Read Only */}
+            {/* Member Since — Read Only */}
             <div>
               <label className="text-xs font-semibold text-gray-500 mb-1 block uppercase tracking-wide">
                 Member Since
               </label>
               <div className="flex items-center gap-3 px-4 py-3 bg-gray-100 rounded-xl">
-                <span className="text-sm text-gray-400 font-medium">{profile.joinDate}</span>
+                <MdCalendarToday className="text-gray-400" size={18} />
+                <span className="text-sm text-gray-400 font-medium">
+                  {user?.createdAt
+                    ? new Date(user.createdAt).toLocaleDateString('en-US', {
+                        month: 'long', year: 'numeric'
+                      })
+                    : 'N/A'}
+                </span>
+                <span className="ml-auto text-xs text-gray-400 bg-gray-200 px-2 py-0.5 rounded-lg">
+                  Read Only
+                </span>
+              </div>
+            </div>
+
+            {/* User ID — Read Only */}
+            <div>
+              <label className="text-xs font-semibold text-gray-500 mb-1 block uppercase tracking-wide">
+                User ID
+              </label>
+              <div className="flex items-center gap-3 px-4 py-3 bg-gray-100 rounded-xl">
+                <span className="text-sm text-gray-400 font-medium truncate">
+                  {user?._id || 'N/A'}
+                </span>
+                <span className="ml-auto text-xs text-gray-400 bg-gray-200 px-2 py-0.5 rounded-lg flex-shrink-0">
+                  Read Only
+                </span>
               </div>
             </div>
           </div>
 
-          {/* Right: Subjects */}
+          {/* Right: Achievements + AI Insight */}
           <div className="flex flex-col gap-4">
-            <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6">
-              <h3 className="font-bold text-gray-700 mb-4">My Subjects</h3>
-              <div className="flex flex-wrap gap-2">
-                {profile.subjects.map((sub, i) => (
-                  <span
-                    key={i}
-                    className={`text-sm font-semibold px-4 py-2 rounded-xl border ${subjectColors[sub] || 'bg-gray-50 text-gray-600 border-gray-200'}`}
-                  >
-                    {sub}
-                  </span>
-                ))}
-              </div>
 
-              {/* AI Insight */}
+            {/* AI Subject Insight */}
+            <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6">
+              <h3 className="font-bold text-gray-700 mb-4">📊 Subject Performance</h3>
+
+              {weakSubjects.length === 0 ? (
+                <p className="text-sm text-gray-400 text-center py-4">
+                  Koi quiz attempt nahi hua — quiz do taake AI analysis ho sake
+                </p>
+              ) : (
+                <div className="flex flex-col gap-2 mb-4">
+                  {weakSubjects.slice(0, 4).map((sub, i) => (
+                    <div key={i} className="flex items-center gap-3">
+                      <span className="text-xs text-gray-500 w-28 truncate">
+                        {sub.subject}
+                      </span>
+                      <div className="flex-1 bg-gray-100 rounded-full h-2">
+                        <div
+                          className="h-2 rounded-full transition-all"
+                          style={{
+                            width: `${sub.averagePercentage}%`,
+                            background: sub.isWeak
+                              ? 'linear-gradient(to right, #f87171, #fb923c)'
+                              : 'linear-gradient(to right, #0f766e, #14b8a6)',
+                          }}
+                        />
+                      </div>
+                      <span className="text-xs text-gray-400 w-8 text-right">
+                        {sub.averagePercentage}%
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               <div
-                className="mt-5 rounded-2xl p-4 text-white"
+                className="rounded-2xl p-4 text-white"
                 style={{ background: 'linear-gradient(135deg, #0f766e, #14b8a6)' }}
               >
                 <p className="text-xs font-bold mb-1">🤖 AI Subject Insight</p>
                 <p className="text-xs text-white/90 leading-relaxed">
-                  Aapka strongest subject Computer Science hai. Mathematics aur Chemistry mein improvement ki zaroorat hai. AI ne study plan accordingly adjust kar diya hai.
+                  {strongestSubject && weakestSubject
+                    ? `Aapka strongest subject ${strongestSubject} hai. ${weakestSubject} mein improvement ki zaroorat hai. AI ne study plan accordingly adjust kar diya hai.`
+                    : 'Quiz attempt karo taake AI aapki performance analyze kar sake aur personalized suggestions de sake.'}
                 </p>
               </div>
             </div>
 
-            {/* Achievement Card */}
+            {/* Achievements */}
             <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6">
               <h3 className="font-bold text-gray-700 mb-4">🏆 Achievements</h3>
               <div className="flex flex-col gap-3">
-                {[
-                  { icon: '🔥', title: '7 Day Streak', desc: 'Lagatar 7 din parha!', earned: true },
-                  { icon: '📝', title: 'Quiz Master', desc: '20+ quizzes complete kiye', earned: true },
-                  { icon: '⭐', title: 'Top Performer', desc: '90%+ score haasil karo', earned: false },
-                  { icon: '📚', title: 'Note Taker', desc: '10+ notes save kiye', earned: true },
-                ].map((ach, i) => (
+                {achievements.map((ach, i) => (
                   <div
                     key={i}
-                    className={`flex items-center gap-3 p-3 rounded-xl border ${
-                      ach.earned ? 'bg-teal-50 border-teal-200' : 'bg-gray-50 border-gray-200 opacity-50'
+                    className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
+                      ach.earned
+                        ? 'bg-teal-50 border-teal-200'
+                        : 'bg-gray-50 border-gray-200 opacity-50'
                     }`}
                   >
                     <span className="text-2xl">{ach.icon}</span>
@@ -341,7 +461,9 @@ const Profile = () => {
                       <p className="text-xs text-gray-400">{ach.desc}</p>
                     </div>
                     {ach.earned && (
-                      <span className="ml-auto text-xs text-teal-600 font-bold">✓ Earned</span>
+                      <span className="ml-auto text-xs text-teal-600 font-bold">
+                        ✓ Earned
+                      </span>
                     )}
                   </div>
                 ))}
@@ -418,15 +540,15 @@ const Profile = () => {
             {/* Submit */}
             <button
               onClick={handlePasswordChange}
-              className="w-full py-3 rounded-xl text-white font-semibold text-sm shadow-md transition-transform hover:scale-105"
+              disabled={changingPass}
+              className="w-full py-3 rounded-xl text-white font-semibold text-sm shadow-md transition-transform hover:scale-105 disabled:opacity-60"
               style={{ background: 'linear-gradient(to right, #0f766e, #14b8a6)' }}
             >
-              Update Password
+              {changingPass ? 'Updating...' : 'Update Password'}
             </button>
           </div>
         </div>
       )}
-
     </div>
   )
 }
