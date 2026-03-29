@@ -5,6 +5,8 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const connectDB = require('./config/db');
 const authRoutes = require('./routes/authRoutes.js');
+const studyRoutes = require('./routes/studyRoutes');
+
 
 // Load env variables
 dotenv.config();
@@ -21,6 +23,7 @@ app.use(express.json());
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/study', studyRoutes);
 
 // Basic Test Route
 app.get('/', (req, res) => {
