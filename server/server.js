@@ -5,7 +5,9 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const connectDB = require('./config/db');
 const authRoutes = require('./routes/authRoutes.js');
-const studyRoutes = require('./routes/studyRoutes');
+const studyRoutes = require('./routes/studyRoutes.js');
+const studyPlanRoutes = require('./routes/studyPlanRoutes.js');
+
 
 
 // Load env variables
@@ -24,6 +26,7 @@ app.use(express.json());
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/study', studyRoutes);
+app.use('/api/study-plan', studyPlanRoutes);
 
 // Basic Test Route
 app.get('/', (req, res) => {
