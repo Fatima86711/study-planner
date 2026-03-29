@@ -7,6 +7,7 @@ const connectDB = require('./config/db');
 const authRoutes = require('./routes/authRoutes.js');
 const studyRoutes = require('./routes/studyRoutes.js');
 const studyPlanRoutes = require('./routes/studyPlanRoutes.js');
+const quizRoutes = require('./routes/quizRoutes.js');
 
 
 
@@ -27,6 +28,7 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/study', studyRoutes);
 app.use('/api/study-plan', studyPlanRoutes);
+app.use('/api/quiz', quizRoutes);
 
 // Basic Test Route
 app.get('/', (req, res) => {
