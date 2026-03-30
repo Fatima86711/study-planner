@@ -1,7 +1,7 @@
 import { createContext, useState, useEffect } from 'react';
 import authService from '../services/authService';
 
-// Context banao — baad mein useAuth mein use hoga
+// Create context — used in useAuth hook
 export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
@@ -9,8 +9,8 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(localStorage.getItem('token') || null);
   const [loading, setLoading] = useState(true); // Pehli baar check kar raha hai
 
-  // ── App Start Hone Par — Token Check Karo ──────────────────────────────────
-  // Agar localStorage mein token hai toh user ko logged in rakho
+  // ── On app start, verify token ─────────────────────────────────────────────
+  // If token exists in localStorage, keep user logged in
   useEffect(() => {
     const verifyToken = async () => {
       const savedToken = localStorage.getItem('token');
@@ -20,7 +20,7 @@ export const AuthProvider = ({ children }) => {
           const data = await authService.getMe();
           setUser(data.user);
         } catch (error) {
-          // Token expired ya invalid — sab clear karo
+          // Token expired or invalid — clear auth data
           localStorage.removeItem('token');
           setToken(null);
           setUser(null);
@@ -71,7 +71,7 @@ export const AuthProvider = ({ children }) => {
         isAuthenticated: !!token,
       }}
     >
-      {/* Loading ke waqt kuch mat dikhao — pehle token verify ho */}
+      {/* Don't render until loading is complete and token verification is done */}
       {!loading && children}
     </AuthContext.Provider>
   );

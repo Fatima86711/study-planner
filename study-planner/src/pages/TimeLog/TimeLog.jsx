@@ -68,8 +68,8 @@ const TimeLog = () => {
 
   // ── Start Session ──────────────────────────────────────────────────────────
   const handleStart = () => {
-    if (!selectedSubject) return alert('Pehle subject select karo!')
-    if (!topic.trim()) return alert('Topic ka naam likho!')
+    if (!selectedSubject) return alert('Please select a subject first!')
+    if (!topic.trim()) return alert('Please enter a topic name!')
     setIsRunning(true)
     setSessionSaved(false)
     setElapsed(0)
@@ -99,7 +99,7 @@ const TimeLog = () => {
       setSessionSaved(true)
 
     } catch (err) {
-      setError('Session save nahi hua — please retry')
+      setError('Failed to save session — please retry')
     } finally {
       setSaving(false)
       setElapsed(0)

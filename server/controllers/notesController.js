@@ -2,10 +2,10 @@
 const Note = require('../models/Note');
 const Groq = require('groq-sdk');
 
-// Groq client initialize karein
+// Initialize Groq client
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-// ─── NOTE SAVE KARO — BINA AI ─────────────────────────────────────────────────
+// ─── SAVE NOTE — without AI ─────────────────────────────────────────────────
 const saveNote = async (req, res) => {
   try {
     const { title, subject, content } = req.body;
@@ -36,16 +36,16 @@ const summarizeNote = async (req, res) => {
       return res.status(400).json({ message: 'Please provide content to summarize' });
     }
 
-    // Groq API call (Llama 3 model use kar rahe hain)
+    // Groq API call (using Llama 3 model)
     const chatCompletion = await groq.chat.completions.create({
       messages: [
         {
           role: "system",
-          content: `Tu ek intelligent study assistant hai. Tera kaam student ke notes ko summarize karna aur study tips dena hai. 
-          Hamesha strictly JSON format mein jawab do. Koi extra text nahi.
-          Format yeh hona chahiye:
+          content: `You are an intelligent study assistant. Your job is to summarize the student's notes and provide study tips.
+          Always respond in strict JSON format. No extra text.
+          Format should be:
           {
-            "summary": "notes ki concise summary — 3 to 5 sentences",
+            "summary": "concise summary of the notes - 3 to 5 sentences",
             "suggestions": ["tip 1", "tip 2", "tip 3"]
           }`
         },
@@ -56,17 +56,17 @@ const summarizeNote = async (req, res) => {
       ],
       model: "llama-3.1-8b-instant", // Fast and free model
       temperature: 0.5,
-      response_format: { type: "json_object" } // Yeh ensure karega ke output sirf JSON ho
+      response_format: { type: "json_object" } // This ensures output is JSON only
     });
 
-    // Response extract karo
+    // Extract response
     const responseText = chatCompletion.choices[0]?.message?.content;
     
     if (!responseText) {
       throw new Error('AI response is empty');
     }
 
-    // JSON ko parse karo
+    // Parse JSON
     const parsed = JSON.parse(responseText);
 
     res.status(200).json({
@@ -105,7 +105,7 @@ const saveNoteWithSummary = async (req, res) => {
   }
 };
 
-// ─── NOTE DELETE KARO ─────────────────────────────────────────────────────────
+// ─── DELETE NOTE ─────────────────────────────────────────────────────────
 const deleteNote = async (req, res) => {
   try {
     const note = await Note.findById(req.params.id);
@@ -126,7 +126,7 @@ const deleteNote = async (req, res) => {
   }
 };
 
-// ─── SAARE NOTES LAO ──────────────────────────────────────────────────────────
+// ─── GET ALL NOTES ──────────────────────────────────────────────────────────
 const getMyNotes = async (req, res) => {
   try {
     const notes = await Note.find({ user: req.user.id })
@@ -194,9 +194,9 @@ const formatNote = async (req, res) => {
 
   } catch (error) {
     console.error('Format note error:', error)
-    res.status(500).json({ message: 'Format nahi hua', error: error.message || 'Unknown error' })
+    res.status(500).json({ message: 'Format failed', error: error.message || 'Unknown error' })
   }
 }
 
-// exports mein add karo
+// Add to exports
 module.exports = { saveNote, summarizeNote, saveNoteWithSummary, getMyNotes, updateNote, formatNote, deleteNote }

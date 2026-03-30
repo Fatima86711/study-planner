@@ -26,13 +26,13 @@ const userSchema = new mongoose.Schema(
     },
   },
   {
-    timestamps: true, // createdAt aur updatedAt automatic ban jayenge
+    timestamps: true, // createdAt and updatedAt will be generated automatically
   }
 );
 
-// ─── Password Hash Karo — Save Se Pehle ───────────────────────────────────────
+// ─── Hash password before saving ──────────────────────────────────────────────
 userSchema.pre('save', async function () {
-  // Agar password change nahi hua toh hash mat karo dobara
+  // If password isn't modified, skip re-hashing
   if (!this.isModified('password')) return;
 
   const salt = await bcrypt.genSalt(10);

@@ -1,4 +1,4 @@
-// Navbar.jsx update karo
+// Navbar component
 import { useNavigate } from 'react-router-dom'
 import { MdLogout, MdPerson } from 'react-icons/md'
 import useAuth from '../hooks/useAuth'
@@ -21,7 +21,7 @@ const Navbar = () => {
 
       <div className="flex items-center gap-4">
 
-        {/* User Name — Click se Profile par jao */}
+        {/* User Name — click to go to Profile */}
         <div
           onClick={() => navigate('/profile')}
           className="flex items-center gap-2 text-gray-600 cursor-pointer hover:text-teal-600 transition-colors"

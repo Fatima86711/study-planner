@@ -209,7 +209,7 @@ const Notes = () => {
         const res = await api.get('/api/notes/my-notes')
         setNotes(res.data.notes)
       } catch (err) {
-        setError('Notes load nahi hue')
+        setError('Failed to load notes')
       } finally {
         setLoading(false)
       }
@@ -217,7 +217,7 @@ const Notes = () => {
     fetchNotes()
   }, [])
 
-  // ── Jab Edit Modal khule toh editor mein content set karo ──
+  // ── When edit modal opens, set editor content ──
   useEffect(() => {
     if (showEditModal && editorRef.current) {
       editorRef.current.innerHTML = editNote.content || ''
@@ -235,14 +235,14 @@ const Notes = () => {
 
   // ── AI Summarize ──
   const handleAiSummarize = async () => {
-    if (!newNote.content.trim()) return alert('Pehle content likho!')
+    if (!newNote.content.trim()) return alert('Please enter content first!')
     setSummarizing(true)
     setAiPreview(null)
     try {
       const res = await api.post('/api/notes/summarize', { content: newNote.content })
       setAiPreview({ summary: res.data.summary, suggestions: res.data.suggestions })
     } catch {
-      alert('AI summary generate nahi hui — please retry')
+      alert('AI summary generation failed — please retry')
     } finally {
       setSummarizing(false)
     }
@@ -259,19 +259,19 @@ const Notes = () => {
       const updatedNote = { ...note, content: res.data.formattedContent }
       setNotes(prev => prev.map(n => n._id === note._id ? updatedNote : n))
       if (selectedNote?._id === note._id) setSelectedNote(updatedNote)
-      alert('✅ Note AI se format ho gaya!')
+      alert('✅ Note formatted by AI successfully!')
     } catch {
-      alert('AI format nahi kar saka — please retry')
+      alert('AI formatting failed — please retry')
     } finally {
       setFormatting(false)
       setFormattingNoteId(null)
     }
   }
 
-  // ── Save Note — Bina AI ──
+  // ── Save Note — Without AI ──
   const handleSaveNote = async () => {
     if (!newNote.subject || !newNote.title || !newNote.content.trim()) {
-      return alert('Sab fields fill karo!')
+      return alert('Please fill in all fields!')
     }
     setSaving(true)
     try {
@@ -281,18 +281,18 @@ const Notes = () => {
       setNotes(prev => [res.data.note, ...prev])
       resetModal()
     } catch {
-      alert('Note save nahi hua — please retry')
+      alert('Failed to save note — please retry')
     } finally {
       setSaving(false)
     }
   }
 
-  // ── Save Note — AI Ke Saath ──
+  // ── Save Note — With AI Summary ──
   const handleSaveWithSummary = async () => {
     if (!newNote.subject || !newNote.title || !newNote.content.trim()) {
-      return alert('Sab fields fill karo!')
+      return alert('Please fill in all fields!')
     }
-    if (!aiPreview) return alert('Pehle AI summary generate karo!')
+    if (!aiPreview) return alert('Please generate AI summary first!')
     setSaving(true)
     try {
       const res = await api.post('/api/notes/save-with-summary', {
@@ -302,7 +302,7 @@ const Notes = () => {
       setNotes(prev => [res.data.note, ...prev])
       resetModal()
     } catch {
-      alert('Note save nahi hua — please retry')
+      alert('Failed to save note — please retry')
     } finally {
       setSaving(false)
     }
@@ -325,7 +325,7 @@ const Notes = () => {
     const latestContent = editorRef.current?.innerHTML || editNote.content
 
     if (!editNote.title.trim() || !latestContent.trim()) {
-      return alert('Title aur content zaroori hain!')
+      return alert('Title and content are required!')
     }
     setEditSaving(true)
     try {
@@ -339,7 +339,7 @@ const Notes = () => {
       if (selectedNote?._id === updated._id) setSelectedNote(updated)
       setShowEditModal(false)
     } catch {
-      alert('Note update nahi hua — please retry')
+      alert('Failed to update note — please retry')
     } finally {
       setEditSaving(false)
     }
@@ -366,7 +366,7 @@ const Notes = () => {
 
   // ── Delete ──
   const handleDelete = (id) => {
-    if (!window.confirm('Note delete karna chahte ho?')) return
+    if (!window.confirm('Do you want to delete this note?')) return
     setNotes(prev => prev.filter(n => n._id !== id))
     if (selectedNote?._id === id) setSelectedNote(null)
   }
@@ -385,7 +385,7 @@ const Notes = () => {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Notes</h1>
-          <p className="text-gray-400 text-sm mt-1">AI aapke notes analyze karke suggestions dega</p>
+          <p className="text-gray-400 text-sm mt-1">AI will analyze your notes and provide study suggestions</p>
         </div>
         <button
           onClick={() => setShowAddModal(true)}
@@ -405,11 +405,11 @@ const Notes = () => {
 
       {/* ── Search + Filter ── */}
       <div className="flex flex-wrap gap-3">
-        <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-4 py-2.5 flex-1 min-w-[200px]">
+        <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-4 py-2.5 flex-1 min-w-200px">
           <MdSearch className="text-gray-400" size={20} />
           <input
             type="text"
-            placeholder="Notes search karein..."
+            placeholder="Search notes..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="outline-none text-sm text-gray-600 w-full bg-transparent"
@@ -439,7 +439,7 @@ const Notes = () => {
             {filteredNotes.length === 0 ? (
               <div className="bg-white rounded-2xl p-8 text-center border border-gray-100">
                 <MdNote className="text-gray-300 mx-auto mb-2" size={40} />
-                <p className="text-gray-400 text-sm">Koi note nahi mila</p>
+                <p className="text-gray-400 text-sm">No notes found</p>
               </div>
             ) : (
               filteredNotes.map(note => (
@@ -456,7 +456,7 @@ const Notes = () => {
                         {note.subject}
                       </span>
                       <h3 className="font-bold text-gray-800 mt-2 text-sm truncate">{note.title}</h3>
-                      {/* HTML content safely show karo — strip tags for preview */}
+                      {/* Display HTML content safely — strip tags for preview */}
                       <p className="text-xs text-gray-400 mt-1 line-clamp-2">
                         {note.content.replace(/<[^>]+>/g, ' ')}
                       </p>
@@ -487,10 +487,10 @@ const Notes = () => {
           {/* ── Note Detail Panel ── */}
           <div className="flex-1">
             {!selectedNote ? (
-              <div className="bg-white rounded-3xl border border-gray-100 p-12 text-center h-full flex flex-col items-center justify-center min-h-[300px]">
+              <div className="bg-white rounded-3xl border border-gray-100 p-12 text-center h-full flex flex-col items-center justify-center min-h-300px">
                 <MdNote className="text-gray-200 mb-3" size={60} />
-                <p className="text-gray-400 font-medium">Koi note select karein</p>
-                <p className="text-gray-300 text-sm mt-1">Left side se note click karein details dekhne ke liye</p>
+                <p className="text-gray-400 font-medium">Select a note</p>
+                <p className="text-gray-300 text-sm mt-1">Click a note on the left to view details</p>
               </div>
             ) : (
               <div className="bg-white rounded-3xl border border-gray-100 p-6 flex flex-col gap-4">
@@ -531,10 +531,10 @@ const Notes = () => {
                     {analyzing ? (
                       <>
                         <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        AI Analyze kar raha hai...
+                        AI is analyzing...
                       </>
                     ) : (
-                      <><FaBrain size={16} /> AI se Analyze Karao</>
+                      <><FaBrain size={16} /> Analyze with AI</>
                     )}
                   </button>
                 )}
@@ -568,7 +568,7 @@ const Notes = () => {
                       disabled={analyzing}
                       className="text-xs text-teal-600 font-semibold hover:underline text-center disabled:opacity-50"
                     >
-                      🔄 Dobara Analyze Karao
+                      🔄 Re-analyze
                     </button>
                   </div>
                 )}
@@ -633,10 +633,10 @@ const Notes = () => {
               {summarizing ? (
                 <>
                   <div className="w-4 h-4 border-2 border-teal-400 border-t-transparent rounded-full animate-spin" />
-                  AI Summary Generate Ho Rahi Hai...
+                  AI summary is being generated...
                 </>
               ) : (
-                <><FaBrain size={14} /> AI Summary Generate Karo (Optional)</>
+                <><FaBrain size={14} /> Generate AI Summary (Optional)</>
               )}
             </button>
 
@@ -724,7 +724,7 @@ const Notes = () => {
             <div className="mb-6">
               <label className="text-sm font-medium text-gray-600 mb-1 block">
                 Content
-                <span className="text-xs text-gray-400 ml-2">(Bold, Italic, Font Size — toolbar use karein)</span>
+                <span className="text-xs text-gray-400 ml-2">(Use toolbar for Bold, Italic, Font Size)</span>
               </label>
 
               {/* Toolbar */}
@@ -735,7 +735,7 @@ const Notes = () => {
                 ref={editorRef}
                 contentEditable
                 suppressContentEditableWarning
-                className="w-full min-h-[180px] px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-700 outline-none focus:border-teal-400 transition-all"
+                className="w-full min-h-180px px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-700 outline-none focus:border-teal-400 transition-all"
                 style={{ lineHeight: '1.7' }}
                 onInput={() => {
                   // Content track karo real-time

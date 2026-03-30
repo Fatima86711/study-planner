@@ -46,8 +46,8 @@ const ResultCard = ({ score, total, subject, topic, notesUsed, onRetry }) => {
         }`}>
           <MdNote size={14} />
           {notesUsed > 0
-            ? `${notesUsed} notes se questions banaye gaye`
-            : 'General knowledge se questions banaye gaye'}
+            ? `${notesUsed} questions generated from your notes`
+            : 'Questions generated from general study material'}
         </div>
 
         {/* Score Summary */}
@@ -115,14 +115,14 @@ const Quiz = () => {
 
   // ── Generate Questions ────────────────────────────────────────────────────
   const handleStartQuiz = async () => {
-    if (!selectedSubject) return alert('Pehle subject select karo!')
+    if (!selectedSubject) return alert('Please select a subject first!')
     setGenerating(true)
     setGenError('')
 
     try {
       const res = await api.post('/api/ai/quiz', {
         subject: selectedSubject,
-        topic: topic.trim() || null,   // ← Topic optional — empty hone par null
+        topic: topic.trim() || null,   // Topic is optional — use null when empty
       })
 
       setQuizData(res.data.questions)
@@ -130,7 +130,7 @@ const Quiz = () => {
       setQuizStarted(true)
 
     } catch (err) {
-      setGenError('Questions generate nahi hue — please retry')
+      setGenError('Failed to generate questions — please retry')
     } finally {
       setGenerating(false)
     }
@@ -164,7 +164,7 @@ const Quiz = () => {
         totalQuestions: quizData.length,
       })
     } catch (err) {
-      console.error('Score save nahi hua:', err)
+      console.error('Failed to save score:', err)
     } finally {
       setSubmitting(false)
       setIsFinished(true)
@@ -239,7 +239,7 @@ const Quiz = () => {
             </div>
             <h2 className="text-xl font-bold text-gray-800">Start AI Quiz</h2>
             <p className="text-gray-400 text-sm mt-1">
-              Subject chunein — AI aapke notes se questions banayega
+              Select a subject and AI will generate questions from your notes
             </p>
           </div>
 
@@ -286,11 +286,11 @@ const Quiz = () => {
             <div className="mt-2 flex flex-col gap-1">
               <p className="text-xs text-gray-400 flex items-center gap-1">
                 <MdNote size={12} />
-                Topic diya — us topic ke notes se questions banenge
+                If topic is entered, questions will be generated from that topic's notes
               </p>
               <p className="text-xs text-gray-400 flex items-center gap-1">
                 <MdNote size={12} />
-                Topic nahi diya — poore subject ke notes se questions banenge
+                If no topic is entered, questions will use all notes for the subject
               </p>
             </div>
           </div>
@@ -312,7 +312,7 @@ const Quiz = () => {
             {generating ? (
               <span className="flex items-center justify-center gap-2">
                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                AI Notes Se Questions Bana Raha Hai...
+                AI is generating questions from your notes...
               </span>
             ) : (
               '🧠 Generate Quiz From My Notes'
@@ -334,8 +334,8 @@ const Quiz = () => {
           <h1 className="text-2xl font-bold text-gray-800">Quiz</h1>
           <p className="text-gray-400 text-sm mt-1">
             {notesUsed > 0
-              ? `${notesUsed} notes se questions banaye gaye`
-              : 'General knowledge se questions banaye gaye'}
+              ? `${notesUsed} questions generated from your notes`
+              : 'Questions generated from general knowledge'}
           </p>
         </div>
         <div className="flex items-center gap-2 bg-teal-50 border border-teal-200 px-4 py-2 rounded-xl">

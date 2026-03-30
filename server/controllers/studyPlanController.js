@@ -1,6 +1,6 @@
 const StudyPlan = require('../models/StudyPlan');
 
-// ─── PLAN SAVE KARO ───────────────────────────────────────────────────────────
+// ─── SAVE STUDY PLAN ───────────────────────────────────────────────────────────
 // Route:  POST /api/study-plan/save
 // Access: Private
 const savePlan = async (req, res) => {
@@ -26,7 +26,7 @@ const savePlan = async (req, res) => {
   }
 };
 
-// ─── SAARE PLANS LAO ─────────────────────────────────────────────────────────
+// ─── GET ALL PLANS ─────────────────────────────────────────────────────────
 // Route:  GET /api/study-plan/my-plans
 // Access: Private
 const getMyPlans = async (req, res) => {
@@ -41,14 +41,14 @@ const getMyPlans = async (req, res) => {
   }
 };
 
-// ─── TASK COMPLETE MARK KARO ──────────────────────────────────────────────────
+// ─── MARK TASK COMPLETE ──────────────────────────────────────────────────
 // Route:  PATCH /api/study-plan/:planId/task/:taskId
 // Access: Private
 const completeTask = async (req, res) => {
   try {
     const { planId, taskId } = req.params;
 
-    // Pehle plan dhundo — aur confirm karo yeh isi user ka hai
+    // Find the plan and ensure it belongs to this user
     const plan = await StudyPlan.findOne({
       _id: planId,
       user: req.user.id,
@@ -58,17 +58,17 @@ const completeTask = async (req, res) => {
       return res.status(404).json({ message: 'Plan not found' });
     }
 
-    // Tasks array mein se woh specific task dhundo
+    // Find the specific task in the plan
     const task = plan.tasks.id(taskId);
 
     if (!task) {
       return res.status(404).json({ message: 'Task not found' });
     }
 
-    // Task complete mark karo
+    // Mark task as completed
     task.isCompleted = true;
 
-    // Plan save karo
+    // Save plan
     await plan.save();
 
     res.status(200).json({ success: true, plan });

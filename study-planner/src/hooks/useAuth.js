@@ -1,8 +1,8 @@
 import { useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
 
-// Har component mein seedha useAuth() likhenge
-// AuthContext import karne ki zarurat nahi
+// Use this hook in components to access auth context
+// No need to import AuthContext directly
 const useAuth = () => {
   const context = useContext(AuthContext);
 

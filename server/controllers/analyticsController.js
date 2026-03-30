@@ -15,7 +15,7 @@ const getDashboard = async (req, res) => {
     const totalHours = (totalMinutes / 60).toFixed(1);
 
     // ── 2. Study Streak ───────────────────────────────────────────────────────
-    // Har din check karo — aaj se peeche jaao
+    // Check each day backwards from today
     let streak = 0;
     let checkDate = new Date();
 
@@ -118,12 +118,12 @@ const getWeeklyProgress = async (req, res) => {
   try {
     const userId = req.user._id;
 
-    // 7 din pehle ki date
+    // Date from 7 days ago
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
     sevenDaysAgo.setHours(0, 0, 0, 0);
 
-    // TimeLog se pichle 7 din ka data — din ke hisaab se group karo
+    // Aggregate last 7 days of TimeLog data by date
     const weeklyData = await TimeLog.aggregate([
       {
         $match: {
@@ -141,7 +141,7 @@ const getWeeklyProgress = async (req, res) => {
         },
       },
       {
-        $sort: { _id: 1 }, // Date ke hisaab se sort
+        $sort: { _id: 1 }, // Sort by date
       },
       {
         $project: {
@@ -168,10 +168,10 @@ const getWeakSubjects = async (req, res) => {
     const userId = req.user._id;
 
     const subjectSummary = await QuizAttempt.aggregate([
-      // Step 1 — Sirf is user ka data
+      // Step 1 — Filter by user
       { $match: { user: userId } },
 
-      // Step 2 — Subject wise group karo
+      // Step 2 — Group by subject
       {
         $group: {
           _id: '$subject',
@@ -182,7 +182,7 @@ const getWeakSubjects = async (req, res) => {
         },
       },
 
-      // Step 3 — Kamzor subject pehle
+      // Step 3 — Weakest subjects first
       { $sort: { averagePercentage: 1 } },
 
       // Step 4 — Clean response
@@ -193,7 +193,7 @@ const getWeakSubjects = async (req, res) => {
           totalAttempts: 1,
           bestScore: 1,
           latestScore: 1,
-          // 50% se kam — weak consider karo
+          // Consider weak if average below 50%
           isWeak: { $lt: ['$averagePercentage', 50] },
           _id: 0,
         },

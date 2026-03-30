@@ -55,7 +55,7 @@ const Profile = () => {
         setQuizCount(quizRes.data.attempts.length)
         setWeakSubjects(weakRes.data.subjectSummary)
       } catch (err) {
-        console.error('Stats load nahi hue')
+        console.error('Failed to load stats')
       } finally {
         setLoadingStats(false)
       }
@@ -100,17 +100,17 @@ const Profile = () => {
   // ── Save Profile ──────────────────────────────────────────────────────────
   const handleSave = async () => {
     if (!editData.name.trim() || !editData.email.trim()) {
-      return alert('Name aur Email zaroori hain!')
+      return alert('Name and Email are required!')
     }
     setSaving(true)
     try {
-      // getMe se updated user wapas lo
+      // fetch updated user data from getMe
       const res = await api.get('/api/auth/me')
       setIsEditing(false)
       setSavedMsg(true)
       setTimeout(() => setSavedMsg(false), 3000)
     } catch (err) {
-      alert('Profile update nahi hui')
+      alert('Profile update failed')
     } finally {
       setSaving(false)
     }
@@ -119,13 +119,13 @@ const Profile = () => {
   // ── Change Password ───────────────────────────────────────────────────────
   const handlePasswordChange = async () => {
     if (!passwords.current || !passwords.newPass || !passwords.confirm) {
-      return setPassMsg('error:Sab fields fill karein!')
+      return setPassMsg('error:Please fill in all fields!')
     }
     if (passwords.newPass !== passwords.confirm) {
-      return setPassMsg('error:Naya password aur confirm match nahi karte!')
+      return setPassMsg('error:New password and confirmation do not match!')
     }
     if (passwords.newPass.length < 6) {
-      return setPassMsg('error:Password kam az kam 6 characters ka hona chahiye!')
+      return setPassMsg('error:Password must be at least 6 characters long!')
     }
 
     setChangingPass(true)
@@ -138,7 +138,7 @@ const Profile = () => {
       setPassMsg('success:Password successfully update ho gaya!')
       setTimeout(() => setPassMsg(''), 3000)
     } catch (err) {
-      setPassMsg(`error:${err.response?.data?.message || 'Password update nahi hua'}`)
+      setPassMsg(`error:${err.response?.data?.message || 'Password update failed'}`)
     } finally {
       setChangingPass(false)
     }
@@ -149,25 +149,25 @@ const Profile = () => {
     {
       icon: '🔥',
       title: '7 Day Streak',
-      desc: 'Lagatar 7 din parho',
+      desc: 'Study 7 days in a row',
       earned: (dashboard?.streak || 0) >= 7,
     },
     {
       icon: '📝',
       title: 'Quiz Master',
-      desc: '20+ quizzes complete karo',
+      desc: 'Complete 20+ quizzes',
       earned: quizCount >= 20,
     },
     {
       icon: '⭐',
       title: 'Top Performer',
-      desc: '90%+ score haasil karo',
+      desc: 'Achieve 90%+ score',
       earned: false,
     },
     {
       icon: '📚',
       title: 'Note Taker',
-      desc: '10+ notes save karo',
+      desc: 'Save 10+ notes',
       earned: noteCount >= 10,
     },
   ]
@@ -257,7 +257,7 @@ const Profile = () => {
       {/* Saved Message */}
       {savedMsg && (
         <div className="p-3 bg-teal-50 border border-teal-200 rounded-xl text-sm text-teal-600 text-center">
-          ✅ Profile successfully update ho gayi!
+          ✅ Profile successfully updated!
         </div>
       )}
 
@@ -401,7 +401,7 @@ const Profile = () => {
 
               {weakSubjects.length === 0 ? (
                 <p className="text-sm text-gray-400 text-center py-4">
-                  Koi quiz attempt nahi hua — quiz do taake AI analysis ho sake
+                  No quiz attempts yet — take a quiz so AI can analyze your performance
                 </p>
               ) : (
                 <div className="flex flex-col gap-2 mb-4">
@@ -436,8 +436,8 @@ const Profile = () => {
                 <p className="text-xs font-bold mb-1">🤖 AI Subject Insight</p>
                 <p className="text-xs text-white/90 leading-relaxed">
                   {strongestSubject && weakestSubject
-                    ? `Aapka strongest subject ${strongestSubject} hai. ${weakestSubject} mein improvement ki zaroorat hai. AI ne study plan accordingly adjust kar diya hai.`
-                    : 'Quiz attempt karo taake AI aapki performance analyze kar sake aur personalized suggestions de sake.'}
+                    ? `Your strongest subject is ${strongestSubject}. You need improvement in ${weakestSubject}. AI has adjusted your study plan accordingly.`
+                    : 'Attempt a quiz so AI can analyze your performance and provide personalized suggestions.'}
                 </p>
               </div>
             </div>

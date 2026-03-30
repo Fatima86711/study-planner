@@ -4,12 +4,12 @@ import useAuth from '../hooks/useAuth';
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated } = useAuth();
 
-  // Logged in nahi — login page par bhejo
+  // If not logged in, redirect to login page
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
-  // Logged in hai — page dikhao
+  // If logged in — render children
   return children;
 };
 

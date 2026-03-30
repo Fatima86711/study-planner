@@ -47,7 +47,7 @@ const StudyPlan = () => {
         const res = await api.get('/api/study-plan/my-plans')
         setPlans(res.data.plans)
       } catch (err) {
-        setError('Plans load nahi hue')
+        setError('Failed to load plans')
       } finally {
         setLoading(false)
       }
@@ -57,22 +57,22 @@ const StudyPlan = () => {
 
   // ── AI Generate Plan ─────────────────────────────────────────────────────
   const handleGenerate = async () => {
-  if (!genSubject.trim()) return alert('Subject likho!')
-  setGenerating(true)
+    if (!genSubject.trim()) return alert('Please enter a subject!')
+    setGenerating(true)
 
-  try {
-    const res = await api.post('/api/ai/plan', {
-      subject: genSubject,
-      days: genDays,
-      hours: genHours,
-    })
-    setGeneratedPlan(res.data.plan)
-  } catch (err) {
-    alert('AI plan generate nahi kar saka — please retry')
-  } finally {
-    setGenerating(false)
+    try {
+      const res = await api.post('/api/ai/plan', {
+        subject: genSubject,
+        days: genDays,
+        hours: genHours,
+      })
+      setGeneratedPlan(res.data.plan)
+    } catch (err) {
+      alert('AI failed to generate plan — please retry')
+    } finally {
+      setGenerating(false)
+    }
   }
-}
 
   // ── Save Generated Plan ──────────────────────────────────────────────────
   const handleSavePlan = async () => {
@@ -94,7 +94,7 @@ const StudyPlan = () => {
       alert('Plan saved successfully!')
 
     } catch (err) {
-      alert('Plan save nahi hua — please retry')
+      alert('Failed to save plan — please retry')
     } finally {
       setSaving(false)
     }
@@ -121,7 +121,7 @@ const StudyPlan = () => {
         )
       )
     } catch (err) {
-      alert('Task update nahi hua')
+      alert('Task update failed')
     }
   }
 
@@ -191,9 +191,9 @@ const StudyPlan = () => {
         // ── No Plans Yet ──
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-12 text-center">
           <MdCalendarToday size={48} className="mx-auto mb-4 text-gray-300" />
-          <p className="text-gray-500 font-semibold mb-2">Koi plan nahi hai abhi</p>
+          <p className="text-gray-500 font-semibold mb-2">No plans yet</p>
           <p className="text-gray-400 text-sm mb-6">
-            "Generate AI Plan" button dabao — AI aapke liye personalized plan banayega
+            Click the "Generate AI Plan" button to create a personalized plan
           </p>
           <button
             onClick={() => setShowGenerateModal(true)}
@@ -387,8 +387,8 @@ const StudyPlan = () => {
                 <div>
                   <p className="font-bold text-sm mb-1">🤖 AI Weekly Insight</p>
                   <p className="text-xs text-white/90 leading-relaxed">
-                    Apne plans ko regularly follow karo — AI aapki consistency track kar raha hai.
-                    Har task complete karo taake AI better recommendations de sake!
+                    Follow your plans regularly — AI is tracking your consistency.
+                    Complete each task to receive better recommendations from AI!
                   </p>
                 </div>
               </div>

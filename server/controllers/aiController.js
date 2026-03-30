@@ -5,16 +5,16 @@ const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
 })
 
-// ─── QUIZ QUESTIONS GENERATE — NOTES SE ──────────────────────────────────────
+// ─── GENERATE QUIZ QUESTIONS FROM NOTES ──────────────────────────────────────
 const generateQuiz = async (req, res) => {
   try {
     const { subject, topic } = req.body
 
     if (!subject) {
-      return res.status(400).json({ message: 'Subject required hai' })
+      return res.status(400).json({ message: 'Subject is required' })
     }
 
-    // ── Notes fetch karo ──────────────────────────────────────────────────
+    // ── Fetch notes ──────────────────────────────────────────────────
     const notes = await Note.find({
       user: req.user._id,
       subject: subject,
@@ -25,8 +25,8 @@ const generateQuiz = async (req, res) => {
     if (notes.length > 0) {
 
       if (topic && topic.trim()) {
-        // ── Topic diya hai — us topic wale notes filter karo ────────────
-        // Pehle topic se matching notes dhundo
+        // ── Topic provided — filter notes for this topic ────────────
+        // Find matching notes by topic
         const topicNotes = notes.filter(note =>
           note.title.toLowerCase().includes(topic.toLowerCase()) ||
           note.content.toLowerCase().includes(topic.toLowerCase())
@@ -34,7 +34,7 @@ const generateQuiz = async (req, res) => {
 
         const relevantNotes = topicNotes.length > 0 ? topicNotes : notes
 
-        // Sirf pure content extract karo — koi labels nahi
+        // Extract only note body content — no labels
         const pureContent = relevantNotes
           .map(note => note.content)
           .join('\n\n')
@@ -66,7 +66,7 @@ Respond ONLY with a valid JSON array — no extra text, no markdown backticks:
 ]`
 
       } else {
-        // ── Topic nahi diya — poore subject ke notes ka content use karo ─
+        // ── Topic not provided — use all notes for subject
         const pureContent = notes
           .map(note => note.content)
           .join('\n\n')
@@ -99,7 +99,7 @@ Respond ONLY with a valid JSON array — no extra text, no markdown backticks:
       }
 
     } else {
-      // ── Koi notes nahi — general knowledge se ────────────────────────
+      // ── No notes available — use general knowledge ────────────────────────
       const topicLine = topic
         ? `Focus specifically on the topic: ${topic}`
         : `Cover important and commonly tested concepts`
@@ -136,7 +136,7 @@ Respond ONLY with a valid JSON array — no extra text, no markdown backticks:
           content: prompt,
         }
       ],
-      temperature: 0.5,   // ← Kam temperature — zyada focused responses
+      temperature: 0.5,   // Lower temperature for more focused responses
       max_tokens: 1500,
     })
 
@@ -157,7 +157,7 @@ Respond ONLY with a valid JSON array — no extra text, no markdown backticks:
   } catch (error) {
     console.error('Quiz generation error:', error.message)
     res.status(500).json({
-      message: 'Quiz generate nahi hua',
+      message: 'Quiz generation failed',
       error: error.message
     })
   }
@@ -169,7 +169,7 @@ const generatePlan = async (req, res) => {
     const { subject, days, hours } = req.body
 
     if (!subject || !days || !hours) {
-      return res.status(400).json({ message: 'Subject, days aur hours required hain' })
+      return res.status(400).json({ message: 'Subject, days and hours are required' })
     }
 
     const completion = await groq.chat.completions.create({
@@ -205,7 +205,7 @@ const generatePlan = async (req, res) => {
   } catch (error) {
     console.error('Plan generation error:', error.message)
     res.status(500).json({
-      message: 'Plan generate nahi hua',
+      message: 'Plan generation failed',
       error: error.message
     })
   }

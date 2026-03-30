@@ -16,10 +16,10 @@ const notesRoutes = require('./routes/notesRoutes.js');
 const analyticsRoutes = require('./routes/analyticsRoutes.js');
 
 
-// ← Naya: Database connect karein (server start hone se pehle)
+// Connect to database before starting server
 connectDB();
 
-// Express app initialize karein
+// Initialize Express app
 const app = express();
 
 // Middleware
@@ -40,10 +40,10 @@ app.get('/', (req, res) => {
   res.send('Study Planner Backend is running! ✅');
 });
 
-// Port define karein
+// Define port
 const PORT = process.env.PORT || 5000;
 
-// Server start karein
+// Start server
 app.listen(PORT, () => {
   console.log(`🚀 Server is running on port ${PORT}`);
 });

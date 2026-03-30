@@ -9,7 +9,7 @@ const saveSession = async (req, res) => {
     }
 
     const session = await TimeLog.create({
-      user: req.user.id,   // middleware se aayega
+      user: req.user.id,   // value from middleware
       subject,
       topic,
       duration,
@@ -26,7 +26,7 @@ const saveSession = async (req, res) => {
 const getHistory = async (req, res) => {
   try {
     const sessions = await TimeLog.find({ user: req.user.id })
-      .sort({ date: -1 }); // latest pehle
+      .sort({ date: -1 }); // latest first
 
     res.status(200).json({ success: true, sessions });
 
@@ -37,7 +37,7 @@ const getHistory = async (req, res) => {
 
 const getTodaySessions = async (req, res) => {
   try {
-    // Aaj ki date ki start aur end banao
+    // Build start and end of today
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
 
@@ -49,7 +49,7 @@ const getTodaySessions = async (req, res) => {
       date: { $gte: startOfDay, $lte: endOfDay },
     });
 
-    // Aaj ka total time calculate karo
+    // Calculate today's total study time
     const totalMinutes = sessions.reduce((sum, s) => sum + s.duration, 0);
 
     res.status(200).json({ success: true, sessions, totalMinutes });
