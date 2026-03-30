@@ -137,5 +137,66 @@ const getMyNotes = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
+// ─── NOTE UPDATE (EDIT) ───────────────────────────────────────────────────────
+// Route:  PUT /api/notes/:id
+// Access: Private
+const updateNote = async (req, res) => {
+  try {
+    const { title, subject, content } = req.body
+    const note = await Note.findOne({ _id: req.params.id, user: req.user.id })
 
-module.exports = { saveNote, summarizeNote, saveNoteWithSummary, getMyNotes, deleteNote };
+    if (!note) {
+      return res.status(404).json({ message: 'Note not found' })
+    }
+
+    note.title = title || note.title
+    note.subject = subject || note.subject
+    note.content = content || note.content
+    await note.save()
+
+    res.status(200).json({ success: true, note })
+
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message })
+  }
+}
+
+// ─── AI FORMAT NOTE ───────────────────────────────────────────────────────────
+// Route:  POST /api/notes/format
+// Access: Private
+const formatNote = async (req, res) => {
+  try {
+    const { content, title, subject } = req.body
+
+    if (!content) {
+      return res.status(400).json({ message: 'Content required' })
+    }
+
+    const response = await groq.chat.completions.create({
+      model: 'llama-3.1-8b-instant',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are a note formatting assistant. Format student notes to be clear, organized, and easy to study from. Keep all original information — just improve structure and clarity. Return only the formatted content without extra commentary.'
+        },
+        {
+          role: 'user',
+          content: `Please format these ${subject || 'Study'} notes about "${title || 'Untitled'}":\n\n${content}`
+        }
+      ],
+      temperature: 0.4,
+      max_tokens: 1200,
+    })
+
+    const formattedContent = response.choices[0]?.message?.content || content
+
+    res.status(200).json({ success: true, formattedContent })
+
+  } catch (error) {
+    console.error('Format note error:', error)
+    res.status(500).json({ message: 'Format nahi hua', error: error.message || 'Unknown error' })
+  }
+}
+
+// exports mein add karo
+module.exports = { saveNote, summarizeNote, saveNoteWithSummary, getMyNotes, updateNote, formatNote, deleteNote }
