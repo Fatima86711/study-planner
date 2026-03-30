@@ -167,9 +167,23 @@ const Notes = () => {
   }
 
   // ── Delete Note ───────────────────────────────────────────────────────────
-  const handleDelete = (id) => {
-    setNotes(prev => prev.filter(n => n._id !== id))
-    if (selectedNote?._id === id) setSelectedNote(null)
+  const handleDelete = async (id) => {
+    try {
+      await api.delete(`/api/notes/${id}`)
+      setNotes(prev => prev.filter(n => n._id !== id))
+      if (selectedNote?._id === id) setSelectedNote(null)
+    } catch (err) {
+      console.error('Delete note failed', err)
+      alert('Note delete karne mein problem aayi. Please retry karo.')
+      // Re-fetch notes to keep state consistent with server
+      try {
+        const res = await api.get('/api/notes/my-notes')
+        setNotes(res.data.notes)
+        setSelectedNote(null)
+      } catch (fetchErr) {
+        console.error('Refresh after delete failure failed', fetchErr)
+      }
+    }
   }
 
   // ── Reset Modal ───────────────────────────────────────────────────────────

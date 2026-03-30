@@ -1,12 +1,12 @@
 import { useState } from 'react'
-import { MdCheckCircle, MdCancel, MdArrowForward, MdRefresh } from 'react-icons/md'
+import { MdCheckCircle, MdCancel, MdArrowForward, MdRefresh, MdNote } from 'react-icons/md'
 import { FaBrain } from 'react-icons/fa'
 import api from '../../services/api'
 
 const subjects = ['Mathematics', 'Physics', 'Chemistry', 'English', 'Biology', 'Computer Science']
 
 // ── Result Card ──
-const ResultCard = ({ score, total, subject, onRetry }) => {
+const ResultCard = ({ score, total, subject, topic, notesUsed, onRetry }) => {
   const percentage = Math.round((score / total) * 100)
   const getMessage = () => {
     if (percentage >= 80) return { text: 'Excellent! 🎉', color: 'text-green-500' }
@@ -33,10 +33,22 @@ const ResultCard = ({ score, total, subject, onRetry }) => {
         <h2 className={`text-2xl font-bold mb-2 ${msg.color}`}>{msg.text}</h2>
         <p className="text-gray-400 text-sm mb-4">
           Subject: <span className="font-semibold text-gray-600">{subject}</span>
+          {topic && (
+            <> · Topic: <span className="font-semibold text-gray-600">{topic}</span></>
+          )}
         </p>
-        <p className="text-gray-400 text-sm mb-6">
-          AI has updated your weak subject analysis based on this quiz.
-        </p>
+
+        {/* Notes Used Badge */}
+        <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold mb-6 ${
+          notesUsed > 0
+            ? 'bg-teal-50 text-teal-600 border border-teal-200'
+            : 'bg-gray-100 text-gray-500 border border-gray-200'
+        }`}>
+          <MdNote size={14} />
+          {notesUsed > 0
+            ? `${notesUsed} notes se questions banaye gaye`
+            : 'General knowledge se questions banaye gaye'}
+        </div>
 
         {/* Score Summary */}
         <div className="bg-gray-50 rounded-2xl p-4 mb-6 text-left">
@@ -45,6 +57,12 @@ const ResultCard = ({ score, total, subject, onRetry }) => {
             <span className="text-sm text-gray-600">Subject</span>
             <span className="text-sm font-bold text-gray-800">{subject}</span>
           </div>
+          {topic && (
+            <div className="flex justify-between items-center py-2 border-b border-gray-100">
+              <span className="text-sm text-gray-600">Topic</span>
+              <span className="text-sm font-bold text-gray-800">{topic}</span>
+            </div>
+          )}
           <div className="flex justify-between items-center py-2 border-b border-gray-100">
             <span className="text-sm text-gray-600">Score</span>
             <span className="text-sm font-bold text-gray-800">{score}/{total}</span>
@@ -65,7 +83,6 @@ const ResultCard = ({ score, total, subject, onRetry }) => {
           }
         </div>
 
-        {/* Retry Button */}
         <button
           onClick={onRetry}
           className="flex items-center gap-2 mx-auto px-8 py-3 rounded-xl text-white font-semibold transition-transform hover:scale-105 shadow-md"
@@ -81,14 +98,14 @@ const ResultCard = ({ score, total, subject, onRetry }) => {
 
 // ── Main Quiz Component ──
 const Quiz = () => {
-  // ── Setup State ───────────────────────────────────────────────────────────
   const [selectedSubject, setSelectedSubject] = useState('')
+  const [topic, setTopic] = useState('')               // ← Naya
   const [quizStarted, setQuizStarted] = useState(false)
   const [quizData, setQuizData] = useState([])
   const [generating, setGenerating] = useState(false)
   const [genError, setGenError] = useState('')
+  const [notesUsed, setNotesUsed] = useState(0)        // ← Naya
 
-  // ── Quiz State ────────────────────────────────────────────────────────────
   const [currentIndex, setCurrentIndex] = useState(0)
   const [selectedOption, setSelectedOption] = useState(null)
   const [isAnswered, setIsAnswered] = useState(false)
@@ -96,26 +113,29 @@ const Quiz = () => {
   const [isFinished, setIsFinished] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
-  // ── Generate Questions from Claude API ────────────────────────────────────
+  // ── Generate Questions ────────────────────────────────────────────────────
   const handleStartQuiz = async () => {
-  if (!selectedSubject) return alert('Pehle subject select karo!')
-  setGenerating(true)
-  setGenError('')
+    if (!selectedSubject) return alert('Pehle subject select karo!')
+    setGenerating(true)
+    setGenError('')
 
-  try {
-    const res = await api.post('/api/ai/quiz', {
-      subject: selectedSubject,
-    })
-    setQuizData(res.data.questions)
-    setQuizStarted(true)
-  } catch (err) {
-    setGenError('Questions generate nahi hue — please retry')
-  } finally {
-    setGenerating(false)
+    try {
+      const res = await api.post('/api/ai/quiz', {
+        subject: selectedSubject,
+        topic: topic.trim() || null,   // ← Topic optional — empty hone par null
+      })
+
+      setQuizData(res.data.questions)
+      setNotesUsed(res.data.notesUsed)
+      setQuizStarted(true)
+
+    } catch (err) {
+      setGenError('Questions generate nahi hue — please retry')
+    } finally {
+      setGenerating(false)
+    }
   }
-}
 
-  // ── Option Click ──────────────────────────────────────────────────────────
   const handleOptionClick = (index) => {
     if (isAnswered) return
     setSelectedOption(index)
@@ -125,10 +145,8 @@ const Quiz = () => {
     }
   }
 
-  // ── Next Question ─────────────────────────────────────────────────────────
   const handleNext = async () => {
     if (currentIndex + 1 >= quizData.length) {
-      // Quiz khatam — score save karo
       await handleSaveScore()
     } else {
       setCurrentIndex(prev => prev + 1)
@@ -137,7 +155,6 @@ const Quiz = () => {
     }
   }
 
-  // ── Save Score to Backend ─────────────────────────────────────────────────
   const handleSaveScore = async () => {
     setSubmitting(true)
     try {
@@ -148,16 +165,15 @@ const Quiz = () => {
       })
     } catch (err) {
       console.error('Score save nahi hua:', err)
-      // Error hone par bhi result dikhao — quiz complete tha
     } finally {
       setSubmitting(false)
       setIsFinished(true)
     }
   }
 
-  // ── Retry ─────────────────────────────────────────────────────────────────
   const handleRetry = () => {
     setSelectedSubject('')
+    setTopic('')
     setQuizStarted(false)
     setQuizData([])
     setCurrentIndex(0)
@@ -166,9 +182,9 @@ const Quiz = () => {
     setScore(0)
     setIsFinished(false)
     setGenError('')
+    setNotesUsed(0)
   }
 
-  // ── Option Styling ────────────────────────────────────────────────────────
   const getOptionStyle = (index) => {
     if (!isAnswered) {
       return selectedOption === index
@@ -182,7 +198,7 @@ const Quiz = () => {
 
   const progress = quizStarted ? ((currentIndex) / quizData.length) * 100 : 0
 
-  // ── Show Result ───────────────────────────────────────────────────────────
+  // ── Result Screen ─────────────────────────────────────────────────────────
   if (isFinished) {
     return (
       <div className="flex flex-col gap-4">
@@ -194,20 +210,22 @@ const Quiz = () => {
           score={score}
           total={quizData.length}
           subject={selectedSubject}
+          topic={topic}
+          notesUsed={notesUsed}
           onRetry={handleRetry}
         />
       </div>
     )
   }
 
-  // ── Show Setup Screen ─────────────────────────────────────────────────────
+  // ── Setup Screen ──────────────────────────────────────────────────────────
   if (!quizStarted) {
     return (
       <div className="flex flex-col gap-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Quiz</h1>
           <p className="text-gray-400 text-sm mt-1">
-            Test your knowledge — AI will update your plan
+            Test your knowledge — AI will generate questions from your notes
           </p>
         </div>
 
@@ -221,14 +239,14 @@ const Quiz = () => {
             </div>
             <h2 className="text-xl font-bold text-gray-800">Start AI Quiz</h2>
             <p className="text-gray-400 text-sm mt-1">
-              Subject select karo — AI 5 questions generate karega
+              Subject chunein — AI aapke notes se questions banayega
             </p>
           </div>
 
-          {/* Subject Select */}
-          <div className="mb-6">
+          {/* Subject Grid */}
+          <div className="mb-5">
             <label className="text-sm font-medium text-gray-600 mb-2 block">
-              Select Subject
+              Select Subject <span className="text-red-400">*</span>
             </label>
             <div className="grid grid-cols-2 gap-2">
               {subjects.map((sub) => (
@@ -250,6 +268,33 @@ const Quiz = () => {
             </div>
           </div>
 
+          {/* Topic Input — Optional */}
+          <div className="mb-6">
+            <label className="text-sm font-medium text-gray-600 mb-1 block">
+              Topic{' '}
+              <span className="text-gray-400 font-normal">(Optional)</span>
+            </label>
+            <input
+              type="text"
+              placeholder="e.g. Derivatives, Newton Laws... (blank = whole course)"
+              value={topic}
+              onChange={(e) => setTopic(e.target.value)}
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm outline-none focus:border-teal-400 transition-all"
+            />
+
+            {/* Helper Text */}
+            <div className="mt-2 flex flex-col gap-1">
+              <p className="text-xs text-gray-400 flex items-center gap-1">
+                <MdNote size={12} />
+                Topic diya — us topic ke notes se questions banenge
+              </p>
+              <p className="text-xs text-gray-400 flex items-center gap-1">
+                <MdNote size={12} />
+                Topic nahi diya — poore subject ke notes se questions banenge
+              </p>
+            </div>
+          </div>
+
           {/* Error */}
           {genError && (
             <div className="mb-4 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm">
@@ -267,10 +312,10 @@ const Quiz = () => {
             {generating ? (
               <span className="flex items-center justify-center gap-2">
                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                AI Questions Generate Ho Rahe Hain...
+                AI Notes Se Questions Bana Raha Hai...
               </span>
             ) : (
-              '🧠 Generate & Start Quiz'
+              '🧠 Generate Quiz From My Notes'
             )}
           </button>
         </div>
@@ -278,18 +323,19 @@ const Quiz = () => {
     )
   }
 
-  // ── Show Quiz ─────────────────────────────────────────────────────────────
+  // ── Quiz Screen ───────────────────────────────────────────────────────────
   const currentQuestion = quizData[currentIndex]
 
   return (
     <div className="flex flex-col gap-6">
 
-      {/* ── Page Title ── */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Quiz</h1>
           <p className="text-gray-400 text-sm mt-1">
-            Test your knowledge — AI will update your plan
+            {notesUsed > 0
+              ? `${notesUsed} notes se questions banaye gaye`
+              : 'General knowledge se questions banaye gaye'}
           </p>
         </div>
         <div className="flex items-center gap-2 bg-teal-50 border border-teal-200 px-4 py-2 rounded-xl">
@@ -300,7 +346,7 @@ const Quiz = () => {
         </div>
       </div>
 
-      {/* ── Progress Bar ── */}
+      {/* Progress Bar */}
       <div>
         <div className="flex justify-between text-xs text-gray-400 mb-1">
           <span>Question {currentIndex + 1} of {quizData.length}</span>
@@ -317,20 +363,29 @@ const Quiz = () => {
         </div>
       </div>
 
-      {/* ── Question Card ── */}
+      {/* Question Card */}
       <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8 max-w-2xl mx-auto w-full">
 
-        {/* Subject Badge */}
-        <span className="text-xs font-bold px-3 py-1 rounded-full bg-teal-50 text-teal-600 border border-teal-200">
-          {selectedSubject}
-        </span>
+        <div className="flex items-center gap-2 flex-wrap mb-4">
+          <span className="text-xs font-bold px-3 py-1 rounded-full bg-teal-50 text-teal-600 border border-teal-200">
+            {selectedSubject}
+          </span>
+          {topic && (
+            <span className="text-xs font-bold px-3 py-1 rounded-full bg-purple-50 text-purple-600 border border-purple-200">
+              {topic}
+            </span>
+          )}
+          {notesUsed > 0 && (
+            <span className="text-xs font-bold px-3 py-1 rounded-full bg-orange-50 text-orange-500 border border-orange-200">
+              📝 From Your Notes
+            </span>
+          )}
+        </div>
 
-        {/* Question */}
-        <h2 className="text-xl font-bold text-gray-800 mt-4 mb-6">
+        <h2 className="text-xl font-bold text-gray-800 mb-6">
           {currentQuestion.question}
         </h2>
 
-        {/* Options */}
         <div className="flex flex-col gap-3">
           {currentQuestion.options.map((option, index) => (
             <button
@@ -354,7 +409,6 @@ const Quiz = () => {
           ))}
         </div>
 
-        {/* Explanation */}
         {isAnswered && (
           <div className={`mt-4 p-3 rounded-xl text-sm font-medium ${
             selectedOption === currentQuestion.correct
@@ -368,7 +422,6 @@ const Quiz = () => {
           </div>
         )}
 
-        {/* Next Button */}
         {isAnswered && (
           <button
             onClick={handleNext}
