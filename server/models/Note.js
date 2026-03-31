@@ -29,6 +29,13 @@ const noteSchema = new mongoose.Schema(
       type: [String], // Array of strings — tips ki list
       default: [],
     },
+    // Existing fields ke baad yeh add karo:
+attachedFile: {
+  originalName: String,
+  mimetype: String,
+  data: String,      // Base64
+  size: Number,
+},
   },
   {
     timestamps: true,

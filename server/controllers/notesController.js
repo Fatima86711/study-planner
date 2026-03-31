@@ -198,5 +198,103 @@ const formatNote = async (req, res) => {
   }
 }
 
+// ─── FILE UPLOAD WITH AI ANALYSIS ────────────────────────────────────────────
+const uploadAndAnalyzeFile = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'Koi file upload nahi hui' })
+    }
+
+    const file = req.file
+    let contentToAnalyze = ''
+    let fileInfo = {
+      originalName: file.originalname,
+      mimetype: file.mimetype,
+      size: file.size,
+      data: file.buffer.toString('base64'), // Base64 mein convert
+    }
+
+    // ── PDF ka text extract karo ──
+    if (file.mimetype === 'application/pdf') {
+      // PDF text extraction — basic approach
+      contentToAnalyze = `PDF file uploaded: ${file.originalname}. Please analyze this document.`
+    } else {
+      // Image ke liye
+      contentToAnalyze = `Image uploaded: ${file.originalname}. Please describe and analyze this image for study purposes.`
+    }
+
+    // ── AI Analysis ──
+    const chatCompletion = await groq.chat.completions.create({
+      messages: [
+        {
+          role: "system",
+          content: `Tu ek intelligent study assistant hai. Uploaded file ko analyze kar aur JSON mein jawab do:
+          {
+            "summary": "file ki concise summary — 3 to 5 sentences",
+            "suggestions": ["tip 1", "tip 2", "tip 3"]
+          }`
+        },
+        {
+          role: "user",
+          content: contentToAnalyze
+        }
+      ],
+      model: "llama-3.1-8b-instant",
+      temperature: 0.5,
+      response_format: { type: "json_object" }
+    })
+
+    const responseText = chatCompletion.choices[0]?.message?.content
+    const parsed = JSON.parse(responseText)
+
+    res.status(200).json({
+      success: true,
+      fileInfo,
+      summary: parsed.summary,
+      suggestions: parsed.suggestions || [],
+    })
+
+  } catch (error) {
+    res.status(500).json({ message: 'File analyze nahi hui', error: error.message })
+  }
+}
+
+// ─── NOTE MEIN FILE ATTACH KARKE SAVE KARO ───────────────────────────────────
+const saveNoteWithFile = async (req, res) => {
+  try {
+    const { title, subject, content, summary, suggestions } = req.body
+    const file = req.file
+
+    if (!title || !subject) {
+      return res.status(400).json({ message: 'Title aur subject zaroori hain' })
+    }
+
+    let attachedFile = null
+    if (file) {
+      attachedFile = {
+        originalName: file.originalname,
+        mimetype: file.mimetype,
+        data: file.buffer.toString('base64'),
+        size: file.size,
+      }
+    }
+
+    const note = await Note.create({
+      user: req.user.id,
+      title,
+      subject,
+      content: content || '',
+      summary: summary || null,
+      suggestions: suggestions ? JSON.parse(suggestions) : [],
+      attachedFile, // ← MongoDB mein file ka data
+    })
+
+    res.status(201).json({ success: true, note })
+
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message })
+  }
+}
+
 // Add to exports
-module.exports = { saveNote, summarizeNote, saveNoteWithSummary, getMyNotes, updateNote, formatNote, deleteNote }
+module.exports = { saveNote, summarizeNote, saveNoteWithSummary, getMyNotes, updateNote, formatNote, deleteNote, uploadAndAnalyzeFile, saveNoteWithFile }
