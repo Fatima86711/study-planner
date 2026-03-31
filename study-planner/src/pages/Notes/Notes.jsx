@@ -247,7 +247,7 @@ const Notes = () => {
         const res = await api.get('/api/notes/my-notes')
         setNotes(res.data.notes)
       } catch (err) {
-        setError('Notes load nahi hue')
+        setError('Failed to load notes')
       } finally {
         setLoading(false)
       }
@@ -255,7 +255,7 @@ const Notes = () => {
     fetchNotes()
   }, [])
 
-  // ── Jab Edit Modal khule toh editor mein content set karo ──
+  // ── When edit modal opens, set content in editor ──
   useEffect(() => {
     if (showEditModal && editorRef.current) {
       editorRef.current.innerHTML = editNote.content || ''
@@ -455,13 +455,13 @@ const handleFileSelect = (e) => {
     reader.onload = (e) => setFilePreview(e.target.result)
     reader.readAsDataURL(file)
   } else {
-    setFilePreview(null) // PDF ke liye preview nahi
+    setFilePreview(null) // No preview for PDF
   }
 }
 
 // ── File AI Analyze ──
 const handleFileAnalyze = async () => {
-  if (!uploadedFile) return alert('Pehle file select karo!')
+  if (!uploadedFile) return alert('Please select a file first!')
   setAnalyzingFile(true)
   try {
     const formData = new FormData()
@@ -471,7 +471,7 @@ const handleFileAnalyze = async () => {
     })
     setFileAnalysis({ summary: res.data.summary, suggestions: res.data.suggestions })
   } catch {
-    alert('File analyze nahi hui — please retry')
+    alert('File analysis failed — please retry')
   } finally {
     setAnalyzingFile(false)
   }
@@ -479,7 +479,7 @@ const handleFileAnalyze = async () => {
 
 // ── Save Note With File ──
 const handleSaveWithFile = async () => {
-  if (!newNote.subject || !newNote.title) return alert('Subject aur title zaroori hain!')
+  if (!newNote.subject || !newNote.title) return alert('Subject and title are required!')
   setSaving(true)
   try {
     const formData = new FormData()
@@ -501,7 +501,7 @@ const handleSaveWithFile = async () => {
     setFileAnalysis(null)
     resetModal()
   } catch {
-    alert('Note save nahi hua — please retry')
+    alert('Failed to save note — please retry')
   } finally {
     setSaving(false)
   }
@@ -556,7 +556,7 @@ const handleFullScreenSave = async () => {
     const latestContent = editorRef.current?.innerHTML || editNote.content || ''
 
     if (!editNote.title.trim() || !latestContent.trim()) {
-      return alert('Title aur content zaroori hain!')
+      return alert('Title and content are required!')
     }
 
     setEditSaving(true)
@@ -611,7 +611,7 @@ const handleFullScreenSave = async () => {
           <MdSearch className="text-gray-400" size={20} />
           <input
             type="text"
-            placeholder="Notes search karein..."
+            placeholder="Search notes..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="outline-none text-sm text-gray-600 w-full bg-transparent"
@@ -641,7 +641,7 @@ const handleFullScreenSave = async () => {
             {filteredNotes.length === 0 ? (
               <div className="bg-white rounded-2xl p-8 text-center border border-gray-100">
                 <MdNote className="text-gray-300 mx-auto mb-2" size={40} />
-                <p className="text-gray-400 text-sm">Koi note nahi mila</p>
+                <p className="text-gray-400 text-sm">No notes found</p>
               </div>
             ) : (
               filteredNotes.map(note => (
@@ -658,7 +658,7 @@ const handleFullScreenSave = async () => {
                         {note.subject}
                       </span>
                       <h3 className="font-bold text-gray-800 mt-2 text-sm truncate">{note.title}</h3>
-                      {/* HTML content safely show karo — strip tags for preview */}
+                      {/* Display HTML content safely — strip tags for preview */}
                       <p className="text-xs text-gray-400 mt-1 line-clamp-2">
                         {note.content.replace(/<[^>]+>/g, ' ')}
                       </p>
@@ -697,8 +697,8 @@ const handleFullScreenSave = async () => {
             {!selectedNote ? (
               <div className="bg-white rounded-3xl border border-gray-100 p-12 text-center h-full flex flex-col items-center justify-center min-h-[300px]">
                 <MdNote className="text-gray-200 mb-3" size={60} />
-                <p className="text-gray-400 font-medium">Koi note select karein</p>
-                <p className="text-gray-300 text-sm mt-1">Left side se note click karein details dekhne ke liye</p>
+                <p className="text-gray-400 font-medium">Select a note to view details</p>
+                <p className="text-gray-300 text-sm mt-1">Click on a note from the list on the left</p>
               </div>
             ) : (
               <div className="bg-white rounded-3xl border border-gray-100 p-6 flex flex-col gap-4">
@@ -899,7 +899,7 @@ const handleFullScreenSave = async () => {
                         ) : (
                           <div className="flex flex-col gap-3">
                             <p className="text-sm text-gray-400">
-                              Is note ki abhi AI analysis nahi hui. Analyze karo!
+                              This note hasn't been analyzed yet. Click to analyze!
                             </p>
                             <button
                               onClick={() => handleAnalyzeExisting(fullScreenNote)}
@@ -913,7 +913,7 @@ const handleFullScreenSave = async () => {
                                   Analyzing...
                                 </>
                               ) : (
-                                <><FaBrain size={16} /> Analyze Karao</>
+                                <><FaBrain size={16} /> Analyze</>
                               )}
                             </button>
                           </div>
@@ -995,7 +995,7 @@ const handleFullScreenSave = async () => {
                   AI Summary Generate Ho Rahi Hai...
                 </>
               ) : (
-                <><FaBrain size={14} /> AI Summary Generate Karo (Optional)</>
+                <><FaBrain size={14} /> Generate AI Summary (Optional)</>
               )}
             </button>
 
@@ -1017,7 +1017,7 @@ const handleFullScreenSave = async () => {
             {/* ── File Upload Section ── */}
             <div className="mb-4">
               <label className="text-sm font-medium text-gray-600 mb-1 block">
-                📎 File Attach Karo (Optional)
+                📎 Attach File (Optional)
               </label>
 
               <input
@@ -1033,7 +1033,7 @@ const handleFullScreenSave = async () => {
                 onClick={() => fileInputRef.current?.click()}
                 className="w-full py-3 border-2 border-dashed border-gray-300 rounded-xl text-sm text-gray-500 hover:border-teal-400 hover:text-teal-500 hover:bg-teal-50 transition-all"
               >
-                {uploadedFile ? `✅ ${uploadedFile.name}` : '📁 Image ya PDF select karo'}
+                {uploadedFile ? `✅ ${uploadedFile.name}` : '📁 Select an image or PDF'}
               </button>
 
               {filePreview && (
@@ -1064,10 +1064,10 @@ const handleFullScreenSave = async () => {
                   {analyzingFile ? (
                     <>
                       <div className="w-4 h-4 border-2 border-purple-400 border-t-transparent rounded-full animate-spin" />
-                      File Analyze Ho Rahi Hai...
+                      Analyzing File...
                     </>
                   ) : (
-                    <><FaBrain size={14} /> AI Se File Analyze Karao</>
+                    <><FaBrain size={14} /> Analyze File with AI</>
                   )}
                 </button>
               )}
@@ -1095,7 +1095,7 @@ const handleFullScreenSave = async () => {
                 className="w-full py-3 rounded-xl text-white font-semibold text-sm shadow-md mb-3 disabled:opacity-60"
                 style={{ background: 'linear-gradient(to right, #7c3aed, #a855f7)' }}
               >
-                {saving ? 'Saving...' : '📎 File Ke Saath Save Karo'}
+                {saving ? 'Saving...' : '📎 Save with File'}
               </button>
             )}
 
