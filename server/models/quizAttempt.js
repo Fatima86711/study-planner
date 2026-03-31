@@ -21,7 +21,7 @@ const quizAttemptSchema = new mongoose.Schema(
       required: true,
     },
     percentage: {
-      type: Number, // Backend khud calculate karega
+      type: Number, // Backend will calculate automatically
     },
     date: {
       type: Date,
