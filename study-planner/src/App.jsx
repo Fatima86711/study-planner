@@ -17,7 +17,7 @@ const App = () => {
     <AuthProvider>
     <BrowserRouter>
       <Routes>
-        {/* Default route — seedha Login par bhejo */}
+        {/* Default route — redirect directly to Login */}
         <Route path="/" element={<Navigate to="/login" />} />
 
         {/* Auth Pages */}
@@ -26,7 +26,7 @@ const App = () => {
         
         <Route path="/profile" element={<Layout><Profile /></Layout>} />  
         
-        {/* Main Pages — Layout ke andar honge */}
+        {/* Main Pages — will be inside Layout */}
         <Route path="/dashboard" element={<Layout><Dashboard /></Layout>} />
         <Route path="/timelog" element={<Layout><TimeLog /></Layout>} />
         <Route path="/studyplan" element={<Layout><StudyPlan /></Layout>} />

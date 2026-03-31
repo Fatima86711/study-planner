@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
+import { toast, ToastContainer } from 'react-toastify'
+import 'react-toastify/dist/ReactToastify.css'
 import { MdPlayArrow, MdStop, MdAccessTime, MdBook, MdHistory } from 'react-icons/md'
 import { FaFire } from 'react-icons/fa'
 import api from '../../services/api'
@@ -68,9 +70,14 @@ const TimeLog = () => {
 
   // ── Start Session ──────────────────────────────────────────────────────────
   const handleStart = () => {
-    if (!selectedSubject) return alert('Please select a subject first!')
-    if (!topic.trim()) return alert('Please enter a topic name!')
-    setIsRunning(true)
+    if (!selectedSubject) {
+      toast.warning('Please select a subject first!')
+      return
+    }
+    if (!topic.trim()) {
+      toast.warning('Please enter a topic name!')
+      return
+    }    setIsRunning(true)
     setSessionSaved(false)
     setElapsed(0)
     setError('')
@@ -93,7 +100,7 @@ const TimeLog = () => {
         duration: durationInMinutes,
       })
 
-      // Naya session history mein add karo — upar se
+      // Add new session to history — at top
       setHistory(prev => [response.data.session, ...prev])
       setTodayCount(prev => prev + 1)
       setSessionSaved(true)
@@ -147,7 +154,7 @@ const TimeLog = () => {
               disabled={isRunning}
               className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm outline-none focus:border-teal-400 transition-all disabled:opacity-50"
             >
-              <option value="">-- Subject chunein --</option>
+              <option value="">-- Select Subject --</option>
               {subjects.map((sub, i) => (
                 <option key={i} value={sub}>{sub}</option>
               ))}
@@ -322,6 +329,18 @@ const TimeLog = () => {
         )}
       </div>
 
+      <ToastContainer 
+        position="bottom-right"
+        autoClose={2000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+      />
     </div>
   )
 }

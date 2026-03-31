@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { toast, ToastContainer } from 'react-toastify'
+import 'react-toastify/dist/ReactToastify.css'
 import useAuth from '../../hooks/useAuth'
 
 const Login = () => {
@@ -20,7 +22,7 @@ const Login = () => {
   // ── Input Change Handler ────────────────────────────────────────────────────
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value })
-    setError('') // Likhte waqt error hata do
+    setError('') // Clear error while typing
   }
 
   // ── Submit Handler ──────────────────────────────────────────────────────────
@@ -58,7 +60,7 @@ const Login = () => {
         setIsLogin(true)
         setFormData({ name: '', email: '', password: '', confirmPassword: '' })
         setError('')
-        alert('Account created! Please login.')
+        toast.success('Account created! Please login.')
       }
     } catch (err) {
       // Backend se jo message aaye woh dikhao
@@ -68,7 +70,7 @@ const Login = () => {
     }
   }
 
-  // ── Toggle — Login/Signup switch karo ─────────────────────────────────────
+  // ── Toggle — switch Login/Signup ─────────────────────────────────────────
   const handleToggle = (loginMode) => {
     setIsLogin(loginMode)
     setError('')
@@ -265,6 +267,19 @@ const Login = () => {
 
         </div>
       </div>
+
+      <ToastContainer 
+        position="bottom-right"
+        autoClose={2000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+      />
     </div>
   )
 }

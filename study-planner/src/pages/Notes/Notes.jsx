@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
+import { toast, ToastContainer } from 'react-toastify'
+import 'react-toastify/dist/ReactToastify.css'
 import {
   MdAdd, MdSearch, MdAutoAwesome, MdNote, MdClose,
   MdMoreVert, MdEdit, MdDelete, MdAutoFixHigh,
@@ -7,6 +9,7 @@ import {
 } from 'react-icons/md'
 import { FaBrain } from 'react-icons/fa'
 import api from '../../services/api'
+import AlertModal from '../../components/AlertModal'
 
 const subjects = ['Mathematics', 'Physics', 'Chemistry', 'English', 'Computer Science', 'Biology']
 
@@ -202,6 +205,10 @@ const Notes = () => {
   const [formatting, setFormatting] = useState(false)
   const [formattingNoteId, setFormattingNoteId] = useState(null)
 
+  // ── Delete Modal State ──
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [noteToDelete, setNoteToDelete] = useState(null)
+
   // ── Fetch Notes ──
   useEffect(() => {
     const fetchNotes = async () => {
@@ -235,14 +242,17 @@ const Notes = () => {
 
   // ── AI Summarize ──
   const handleAiSummarize = async () => {
-    if (!newNote.content.trim()) return alert('Please enter content first!')
+    if (!newNote.content.trim()) {
+      toast.warning('Please enter content first!')
+      return
+    }
     setSummarizing(true)
     setAiPreview(null)
     try {
       const res = await api.post('/api/notes/summarize', { content: newNote.content })
       setAiPreview({ summary: res.data.summary, suggestions: res.data.suggestions })
     } catch {
-      alert('AI summary generation failed — please retry')
+      toast.error('AI summary generation failed — please retry')
     } finally {
       setSummarizing(false)
     }
@@ -259,9 +269,9 @@ const Notes = () => {
       const updatedNote = { ...note, content: res.data.formattedContent }
       setNotes(prev => prev.map(n => n._id === note._id ? updatedNote : n))
       if (selectedNote?._id === note._id) setSelectedNote(updatedNote)
-      alert('✅ Note formatted by AI successfully!')
+      toast.success('Note formatted by AI successfully!')
     } catch {
-      alert('AI formatting failed — please retry')
+      toast.error('AI formatting failed — please retry')
     } finally {
       setFormatting(false)
       setFormattingNoteId(null)
@@ -271,7 +281,8 @@ const Notes = () => {
   // ── Save Note — Without AI ──
   const handleSaveNote = async () => {
     if (!newNote.subject || !newNote.title || !newNote.content.trim()) {
-      return alert('Please fill in all fields!')
+      toast.warning('Please fill in all fields!')
+      return
     }
     setSaving(true)
     try {
@@ -281,7 +292,7 @@ const Notes = () => {
       setNotes(prev => [res.data.note, ...prev])
       resetModal()
     } catch {
-      alert('Failed to save note — please retry')
+      toast.error('Failed to save note — please retry')
     } finally {
       setSaving(false)
     }
@@ -290,9 +301,13 @@ const Notes = () => {
   // ── Save Note — With AI Summary ──
   const handleSaveWithSummary = async () => {
     if (!newNote.subject || !newNote.title || !newNote.content.trim()) {
-      return alert('Please fill in all fields!')
+      toast.warning('Please fill in all fields!')
+      return
     }
-    if (!aiPreview) return alert('Please generate AI summary first!')
+    if (!aiPreview) {
+      toast.warning('Please generate AI summary first!')
+      return
+    }
     setSaving(true)
     try {
       const res = await api.post('/api/notes/save-with-summary', {
@@ -302,7 +317,7 @@ const Notes = () => {
       setNotes(prev => [res.data.note, ...prev])
       resetModal()
     } catch {
-      alert('Failed to save note — please retry')
+      toast.error('Failed to save note — please retry')
     } finally {
       setSaving(false)
     }
@@ -325,7 +340,8 @@ const Notes = () => {
     const latestContent = editorRef.current?.innerHTML || editNote.content
 
     if (!editNote.title.trim() || !latestContent.trim()) {
-      return alert('Title and content are required!')
+      toast.warning('Title and content are required!')
+      return
     }
     setEditSaving(true)
     try {
@@ -339,7 +355,7 @@ const Notes = () => {
       if (selectedNote?._id === updated._id) setSelectedNote(updated)
       setShowEditModal(false)
     } catch {
-      alert('Failed to update note — please retry')
+      toast.error('Failed to update note — please retry')
     } finally {
       setEditSaving(false)
     }
@@ -358,7 +374,7 @@ const Notes = () => {
       setNotes(prev => prev.map(n => n._id === note._id ? updatedNote : n))
       setSelectedNote(updatedNote)
     } catch {
-      alert('AI analysis fail — please retry')
+      toast.error('AI analysis failed — please retry')
     } finally {
       setAnalyzing(false)
     }
@@ -366,9 +382,22 @@ const Notes = () => {
 
   // ── Delete ──
   const handleDelete = (id) => {
-    if (!window.confirm('Do you want to delete this note?')) return
-    setNotes(prev => prev.filter(n => n._id !== id))
-    if (selectedNote?._id === id) setSelectedNote(null)
+    setNoteToDelete(id)
+    setDeleteModalOpen(true)
+  }
+
+  const confirmDelete = async () => {
+    try {
+      await api.delete(`/api/notes/${noteToDelete}`)
+      setNotes(prev => prev.filter(n => n._id !== noteToDelete))
+      if (selectedNote?._id === noteToDelete) setSelectedNote(null)
+      toast.success('Note deleted successfully', { position: 'bottom-right', autoClose: 2000 })
+    } catch (err) {
+      toast.error('Failed to delete note — please try again', { position: 'bottom-right', autoClose: 2000 })
+    } finally {
+      setDeleteModalOpen(false)
+      setNoteToDelete(null)
+    }
   }
 
   // ── Reset Modal ──
@@ -585,7 +614,7 @@ const Notes = () => {
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-xl font-bold text-gray-800">Naya Note Add Karein</h2>
+              <h2 className="text-xl font-bold text-gray-800">Add New Note</h2>
               <button onClick={resetModal} className="text-gray-400 hover:text-gray-600">
                 <MdClose size={24} />
               </button>
@@ -598,7 +627,7 @@ const Notes = () => {
                 onChange={(e) => setNewNote(prev => ({ ...prev, subject: e.target.value }))}
                 className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm outline-none focus:border-teal-400"
               >
-                <option value="">-- Subject chunein --</option>
+                <option value="">-- Select Subject --</option>
                 {subjects.map((sub, i) => <option key={i} value={sub}>{sub}</option>)}
               </select>
             </div>
@@ -691,7 +720,7 @@ const Notes = () => {
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto">
 
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-xl font-bold text-gray-800">Note Edit Karein</h2>
+              <h2 className="text-xl font-bold text-gray-800">Edit Note</h2>
               <button onClick={() => setShowEditModal(false)} className="text-gray-400 hover:text-gray-600">
                 <MdClose size={24} />
               </button>
@@ -738,8 +767,9 @@ const Notes = () => {
                 className="w-full min-h-180px px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-700 outline-none focus:border-teal-400 transition-all"
                 style={{ lineHeight: '1.7' }}
                 onInput={() => {
-                  // Content track karo real-time
+                  // Track content in real-time
                   setEditNote(prev => ({
+
                     ...prev,
                     content: editorRef.current?.innerHTML || ''
                   }))
@@ -775,6 +805,32 @@ const Notes = () => {
         </div>
       )}
 
+      <AlertModal
+        isOpen={deleteModalOpen}
+        title="Delete Note"
+        message="Are you sure you want to delete this note? This action cannot be undone."
+        type="warning"
+        onConfirm={confirmDelete}
+        onCancel={() => {
+          setDeleteModalOpen(false)
+          setNoteToDelete(null)
+        }}
+        confirmText="Delete"
+        cancelText="Keep Note"
+      />
+
+      <ToastContainer 
+        position="bottom-right"
+        autoClose={2000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+      />
     </div>
   )
 }

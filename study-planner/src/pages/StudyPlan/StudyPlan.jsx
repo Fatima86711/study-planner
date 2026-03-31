@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react'
+import { toast, ToastContainer } from 'react-toastify'
+import 'react-toastify/dist/ReactToastify.css'
 import {
   MdCheckCircle, MdRadioButtonUnchecked, MdCalendarToday,
   MdAutoAwesome, MdAccessTime, MdAdd, MdSave
@@ -57,7 +59,10 @@ const StudyPlan = () => {
 
   // ── AI Generate Plan ─────────────────────────────────────────────────────
   const handleGenerate = async () => {
-    if (!genSubject.trim()) return alert('Please enter a subject!')
+    if (!genSubject.trim()) {
+      toast.warning('Please enter a subject!')
+      return
+    }
     setGenerating(true)
 
     try {
@@ -68,7 +73,7 @@ const StudyPlan = () => {
       })
       setGeneratedPlan(res.data.plan)
     } catch (err) {
-      alert('AI failed to generate plan — please retry')
+      toast.error('AI failed to generate plan — please retry')
     } finally {
       setGenerating(false)
     }
@@ -86,15 +91,15 @@ const StudyPlan = () => {
         tasks: generatedPlan.tasks,
       })
 
-      // Naya plan list mein add karo
+      // Add new plan to list
       setPlans(prev => [res.data.plan, ...prev])
       setGeneratedPlan(null)
       setShowGenerateModal(false)
       setGenSubject('')
-      alert('Plan saved successfully!')
+      toast.success('Plan saved successfully!')
 
     } catch (err) {
-      alert('Failed to save plan — please retry')
+      toast.error('Failed to save plan — please retry')
     } finally {
       setSaving(false)
     }
@@ -105,7 +110,7 @@ const StudyPlan = () => {
     try {
       const res = await api.patch(`/api/study-plan/${planId}/task/${taskId}`)
 
-      // Local state update karo
+      // Update local state
       setPlans(prev =>
         prev.map(plan =>
           plan._id === planId
@@ -121,7 +126,7 @@ const StudyPlan = () => {
         )
       )
     } catch (err) {
-      alert('Task update failed')
+      toast.error('Task update failed')
     }
   }
 
@@ -513,6 +518,18 @@ const StudyPlan = () => {
         </div>
       )}
 
+      <ToastContainer 
+        position="bottom-right"
+        autoClose={2000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+      />
     </div>
   )
 }

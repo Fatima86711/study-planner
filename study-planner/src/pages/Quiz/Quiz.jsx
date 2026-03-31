@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { toast, ToastContainer } from 'react-toastify'
+import 'react-toastify/dist/ReactToastify.css'
 import { MdCheckCircle, MdCancel, MdArrowForward, MdRefresh, MdNote } from 'react-icons/md'
 import { FaBrain } from 'react-icons/fa'
 import api from '../../services/api'
@@ -115,7 +117,10 @@ const Quiz = () => {
 
   // ── Generate Questions ────────────────────────────────────────────────────
   const handleStartQuiz = async () => {
-    if (!selectedSubject) return alert('Please select a subject first!')
+    if (!selectedSubject) {
+      toast.warning('Please select a subject first!')
+      return
+    }
     setGenerating(true)
     setGenError('')
 
@@ -443,6 +448,19 @@ const Quiz = () => {
           </button>
         )}
       </div>
+
+      <ToastContainer 
+        position="bottom-right"
+        autoClose={2000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+      />
     </div>
   )
 }

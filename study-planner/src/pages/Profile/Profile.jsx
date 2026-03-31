@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
+import { toast, ToastContainer } from 'react-toastify'
+import 'react-toastify/dist/ReactToastify.css'
 import {
   MdEdit, MdSave, MdClose, MdPerson, MdEmail,
-  MdSchool, MdCalendarToday, MdLock
+  MdSchool, MdCalendarToday, MdLock, MdLogout
 } from 'react-icons/md'
 import { FaFire, FaTrophy, FaBrain } from 'react-icons/fa'
 import useAuth from '../../hooks/useAuth'
@@ -100,7 +102,8 @@ const Profile = () => {
   // ── Save Profile ──────────────────────────────────────────────────────────
   const handleSave = async () => {
     if (!editData.name.trim() || !editData.email.trim()) {
-      return alert('Name and Email are required!')
+      toast.warning('Name and Email are required!')
+      return
     }
     setSaving(true)
     try {
@@ -110,7 +113,7 @@ const Profile = () => {
       setSavedMsg(true)
       setTimeout(() => setSavedMsg(false), 3000)
     } catch (err) {
-      alert('Profile update failed')
+      toast.error('Profile update failed')
     } finally {
       setSaving(false)
     }
@@ -196,7 +199,7 @@ const Profile = () => {
       <div>
         <h1 className="text-2xl font-bold text-gray-800">My Profile</h1>
         <p className="text-gray-400 text-sm mt-1">
-          Apni personal information aur settings manage karein
+          Manage your personal information and settings
         </p>
       </div>
 
@@ -549,6 +552,19 @@ const Profile = () => {
           </div>
         </div>
       )}
+
+      <ToastContainer 
+        position="bottom-right"
+        autoClose={2000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+      />
     </div>
   )
 }

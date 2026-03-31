@@ -1,11 +1,11 @@
 import axios from 'axios';
 
-// Axios instance — base URL .env se aayegi
+// Axios instance — base URL comes from .env
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
 });
 
-// Har request se pehle — token automatically header mein lagao
+// Before each request — attach token automatically to header
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
