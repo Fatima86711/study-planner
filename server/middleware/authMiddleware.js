@@ -15,7 +15,7 @@ const protect = async (req, res, next) => {
       req.headers.authorization &&
       req.headers.authorization.startsWith('Bearer')
     ) {
-      token = req.headers.authorization.split(' ')[1]; // Remove "Bearer" and use only token
+      token = req.headers.authorization.split(' ')[1]; // "Bearer" hata ke sirf token lo
     }
 
     // 2. If token is missing

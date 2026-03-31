@@ -27,7 +27,7 @@ const saveNote = async (req, res) => {
   }
 };
 
-// ─── GENERATE AI SUMMARY (NO SAVE) ────────────────────────────────────────
+// ─── AI SUMMARY GENERATE KARO (GEMINI SE) — SAVE NAHI ─────────────────────────
 const summarizeNote = async (req, res) => {
   try {
     const { content } = req.body;
@@ -81,7 +81,7 @@ const summarizeNote = async (req, res) => {
   }
 };
 
-// ─── SAVE NOTE WITH AI SUMMARY ─────────────────────────────────────────────
+// ─── NOTE SAVE KARO — AI SUMMARY KE SAATH ─────────────────────────────────────
 const saveNoteWithSummary = async (req, res) => {
   try {
     const { title, subject, content, summary, suggestions } = req.body;

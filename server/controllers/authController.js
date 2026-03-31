@@ -30,10 +30,10 @@ const registerUser = async (req, res) => {
       return res.status(400).json({ message: 'Email already in use' });
     }
 
-    // 3. Create a new user — password will be hashed automatically in User.js
+    // 3. Naya user banao — password User.js mein khud hash ho jayega
     const user = await User.create({ name, email, password });
 
-    // 4. Generate token and send response
+    // 4. Token banao aur response bhejo
     const token = generateToken(user._id);
 
     res.status(201).json({
@@ -75,7 +75,7 @@ const loginUser = async (req, res) => {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
-    // 4. Generate token and send response
+    // 4. Token banao aur response bhejo
     const token = generateToken(user._id);
 
     res.status(200).json({

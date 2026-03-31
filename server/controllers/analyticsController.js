@@ -20,28 +20,28 @@ const getDashboard = async (req, res) => {
     let checkDate = new Date();
 
     while (true) {
-      // Start and end of the day
+      // Is din ki start aur end
       const start = new Date(checkDate);
       start.setHours(0, 0, 0, 0);
 
       const end = new Date(checkDate);
       end.setHours(23, 59, 59, 999);
 
-      // Was there a session that day?
+      // Is din koi session tha?
       const sessionThatDay = await TimeLog.findOne({
         user: userId,
         date: { $gte: start, $lte: end },
       });
 
-      if (!sessionThatDay) break; // Streak is broken
+      if (!sessionThatDay) break; // Streak toot gayi
 
       streak++;
 
-      // Move one day back
+      // Ek din peeche jaao
       checkDate.setDate(checkDate.getDate() - 1);
     }
 
-    // ── 3. Today's Data ───────────────────────────────────────────────────────
+    // ── 3. Aaj Ka Data ────────────────────────────────────────────────────────
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
 

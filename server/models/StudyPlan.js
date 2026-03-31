@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-// Task structure — embedded document
+// Task ka structure — embedded document
 const taskSchema = new mongoose.Schema({
   description: {
     type: String,
@@ -34,7 +34,7 @@ const studyPlanSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
-    tasks: [taskSchema], // array of taskSchema — embedded
+    tasks: [taskSchema], // taskSchema ki array — embedded
     date: {
       type: Date,
       default: Date.now,
