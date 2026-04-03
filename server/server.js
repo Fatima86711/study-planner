@@ -14,6 +14,7 @@ const studyPlanRoutes = require('./routes/studyPlanRoutes.js');
 const quizRoutes = require('./routes/quizRoutes.js');
 const notesRoutes = require('./routes/notesRoutes.js');
 const analyticsRoutes = require('./routes/analyticsRoutes.js');
+const courseRoutes = require('./routes/courseRoutes');
 
 
 // Connect to database before starting server
@@ -34,6 +35,7 @@ app.use('/api/quiz', quizRoutes);
 app.use('/api/notes', notesRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/ai', aiRoutes)
+app.use('/api/courses', courseRoutes);
 
 // Basic Test Route
 app.get('/', (req, res) => {
