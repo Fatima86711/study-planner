@@ -1,5 +1,4 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-
 import Login from './pages/Login/Login'
 import Signup from './pages/Signup/Signup'
 import Dashboard from './pages/Dashboard/Dashboard'
@@ -10,38 +9,45 @@ import Notes from './pages/Notes/Notes'
 import Layout from './components/Layout'
 import Profile from './pages/profile/Profile'
 import { AuthProvider } from './context/AuthContext'
+import { CourseProvider } from './context/CourseContext'
 import ProtectedRoute from './components/ProtectedRoute'
+import Courses from './pages/Courses/Courses'
 
 const App = () => {
   return (
     <AuthProvider>
-    <BrowserRouter>
-      <Routes>
-        {/* Default route — redirect directly to Login */}
-        <Route path="/" element={<Navigate to="/login" />} />
+      <CourseProvider>
+        <BrowserRouter>
+          <Routes>
 
-        {/* Auth Pages */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
-        
-        <Route path="/profile" element={<Layout><Profile /></Layout>} />  
-        
-        {/* Main Pages — will be inside Layout */}
-        <Route path="/dashboard" element={<Layout><Dashboard /></Layout>} />
-        <Route path="/timelog" element={<Layout><TimeLog /></Layout>} />
-        <Route path="/studyplan" element={<Layout><StudyPlan /></Layout>} />
-        <Route path="/quiz" element={<Layout><Quiz /></Layout>} />
-        <Route path="/notes" element={<Layout><Notes /></Layout>} /> 
-        <Route
-  path="/profile"
-  element={
-    <ProtectedRoute>
-      <Layout><Profile /></Layout>
-    </ProtectedRoute>
-  }
-/> 
-        </Routes>
-    </BrowserRouter>
+            {/* Default Route */}
+            <Route path="/" element={<Navigate to="/login" />} />
+
+            {/* Auth Pages — No Layout */}
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
+
+            {/* Main Pages — Layout ke andar */}
+            <Route path="/dashboard" element={<Layout><Dashboard /></Layout>} />
+            <Route path="/timelog" element={<Layout><TimeLog /></Layout>} />
+            <Route path="/studyplan" element={<Layout><StudyPlan /></Layout>} />
+            <Route path="/quiz" element={<Layout><Quiz /></Layout>} />
+            <Route path="/notes" element={<Layout><Notes /></Layout>} />
+            <Route path="/courses" element={<Layout><Courses /></Layout>} />
+
+            {/* Protected Route */}
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <Layout><Profile /></Layout>
+                </ProtectedRoute>
+              }
+            />
+
+          </Routes>
+        </BrowserRouter>
+      </CourseProvider>
     </AuthProvider>
   )
 }

@@ -11,6 +11,7 @@ const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: <MdDashboard size={20} /> },
   { path: '/timelog', label: 'Time Log', icon: <MdAccessTime size={20} /> },
   { path: '/studyplan', label: 'Study Plan', icon: <MdCalendarToday size={20} /> },
+  { path: '/courses', label: 'Courses', icon: <MdNote size={20} /> },
   { path: '/quiz', label: 'Quiz', icon: <MdQuiz size={20} /> },
   { path: '/notes', label: 'Notes', icon: <MdNote size={20} /> },
 ]
