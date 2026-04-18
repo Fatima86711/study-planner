@@ -7,7 +7,9 @@ import {
 } from 'react-icons/md'
 import { FaBrain, FaFire } from 'react-icons/fa'
 import api from '../../services/api'
-
+import { useContext } from 'react'
+import { AuthContext } from '../../context/AuthContext'
+import { getStudySchedule } from '../../services/studyService'
 const weekDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
 // ── Priority Badge ──
@@ -17,6 +19,7 @@ const PriorityBadge = ({ priority }) => {
     medium: 'bg-yellow-50 text-yellow-600 border-yellow-200',
     low: 'bg-green-50 text-green-600 border-green-200',
   }
+  
   return (
     <span className={`text-xs font-bold px-2 py-1 rounded-lg border ${styles[priority] || styles.medium}`}>
       {priority ? priority.charAt(0).toUpperCase() + priority.slice(1) : 'Medium'}
@@ -27,7 +30,9 @@ const PriorityBadge = ({ priority }) => {
 const StudyPlan = () => {
   const [activeDay, setActiveDay] = useState('Monday')
   const [activeTab, setActiveTab] = useState('daily')
-
+const { user } = useContext(AuthContext)
+const [schedule, setSchedule] = useState([])
+const [scheduleLoading, setScheduleLoading] = useState(false)
   // ── Plans State ──────────────────────────────────────────────────────────
   const [plans, setPlans] = useState([])
   const [loading, setLoading] = useState(true)
@@ -41,6 +46,17 @@ const StudyPlan = () => {
   const [generating, setGenerating] = useState(false)
   const [generatedPlan, setGeneratedPlan] = useState(null)
   const [saving, setSaving] = useState(false)
+
+  const fetchSchedule = async () => {
+  setScheduleLoading(true)
+  const data = await getStudySchedule(user?._id)
+  setSchedule(data)
+  setScheduleLoading(false)
+}
+
+useEffect(() => {
+  if (user?._id) fetchSchedule()
+}, [user])
 
   // ── Fetch Plans ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -396,6 +412,88 @@ const StudyPlan = () => {
                     Complete each task to receive better recommendations from AI!
                   </p>
                 </div>
+                {/* ── AI Spaced Repetition Schedule ── */}
+<div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+  <div className="flex items-center justify-between mb-4">
+    <div className="flex items-center gap-2">
+      <FaBrain className="text-teal-500" size={18} />
+      <h3 className="font-bold text-gray-700">AI Review Schedule</h3>
+    </div>
+    <button
+      onClick={fetchSchedule}
+      className="text-xs text-teal-600 font-semibold border border-teal-200 px-3 py-1 rounded-lg hover:bg-teal-50"
+    >
+      🔄 Refresh
+    </button>
+  </div>
+
+  {scheduleLoading ? (
+    <div className="text-center py-6">
+      <div className="w-8 h-8 border-4 border-teal-200 border-t-teal-600 rounded-full animate-spin mx-auto mb-2" />
+      <p className="text-gray-400 text-sm">Calculating forgetting curves...</p>
+    </div>
+  ) : schedule.length === 0 ? (
+    <div className="text-center py-6 text-gray-400 text-sm">
+      Complete some quizzes and log study sessions to see your review schedule
+    </div>
+  ) : (
+    <div className="flex flex-col gap-3">
+      {schedule.map((item, i) => (
+        <div key={i} className={`p-4 rounded-xl border-2 ${
+          item.urgency === 'overdue' ? 'border-red-200 bg-red-50' :
+          item.urgency === 'high'    ? 'border-orange-200 bg-orange-50' :
+          item.urgency === 'medium'  ? 'border-yellow-200 bg-yellow-50' :
+                                       'border-green-200 bg-green-50'
+        }`}>
+          <div className="flex items-center justify-between mb-2">
+            <span className="font-bold text-gray-800">{item.subject}</span>
+            <span className={`text-xs font-bold px-2 py-1 rounded-lg ${
+              item.urgency === 'overdue' ? 'bg-red-100 text-red-600' :
+              item.urgency === 'high'    ? 'bg-orange-100 text-orange-600' :
+              item.urgency === 'medium'  ? 'bg-yellow-100 text-yellow-700' :
+                                           'bg-green-100 text-green-600'
+            }`}>
+              {item.urgency === 'overdue' ? '⚠️ Overdue' :
+               item.urgency === 'high'    ? '🔴 Review Soon' :
+               item.urgency === 'medium'  ? '🟡 This Week' : '🟢 On Track'}
+            </span>
+          </div>
+
+          {/* Recall probability bar */}
+          <div className="mb-2">
+            <div className="flex justify-between text-xs text-gray-500 mb-1">
+              <span>Memory retention</span>
+              <span>{Math.round(item.recall_probability * 100)}%</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div
+                className="h-2 rounded-full transition-all"
+                style={{
+                  width: `${item.recall_probability * 100}%`,
+                  background: item.recall_probability > 0.7
+                    ? 'linear-gradient(to right, #0f766e, #14b8a6)'
+                    : item.recall_probability > 0.5
+                    ? 'linear-gradient(to right, #d97706, #f59e0b)'
+                    : 'linear-gradient(to right, #dc2626, #ef4444)'
+                }}
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-between text-xs text-gray-500">
+            <span>Last score: <strong>{item.last_score}%</strong></span>
+            <span>Study time: <strong>{item.total_study_minutes}m</strong></span>
+            <span>
+              {item.urgency === 'overdue'
+                ? 'Review now!'
+                : `Review in ${item.review_in_days} day${item.review_in_days !== 1 ? 's' : ''}`}
+            </span>
+          </div>
+        </div>
+      ))}
+    </div>
+  )}
+</div>
               </div>
             </div>
           )}

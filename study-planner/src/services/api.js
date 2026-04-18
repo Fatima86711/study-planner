@@ -18,3 +18,6 @@ api.interceptors.request.use(
 );
 
 export default api;
+
+
+export const ML_API = import.meta.env.VITE_ML_API_URL || "http://localhost:8000";

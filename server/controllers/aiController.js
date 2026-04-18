@@ -1,3 +1,9 @@
+// Strip HTML tags from note content
+const stripHtml = (html) => {
+  return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+}
+
+
 const Groq = require('groq-sdk')
 const Note = require('../models/Note')
 
@@ -35,9 +41,10 @@ const generateQuiz = async (req, res) => {
         const relevantNotes = topicNotes.length > 0 ? topicNotes : notes
 
         // Extract only note body content — no labels
-        const pureContent = relevantNotes
-          .map(note => note.content)
-          .join('\n\n')
+       
+    const pureContent = relevantNotes
+  .map(note => stripHtml(note.content))
+  .join('\n\n')
 
         prompt = `You are a quiz generator for students.
 
@@ -68,8 +75,8 @@ Respond ONLY with a valid JSON array — no extra text, no markdown backticks:
       } else {
         // ── Topic not provided — use all notes for subject
         const pureContent = notes
-          .map(note => note.content)
-          .join('\n\n')
+  .map(note => stripHtml(note.content))
+  .join('\n\n')
 
         prompt = `You are a quiz generator for students.
 
@@ -143,17 +150,30 @@ Respond ONLY with a valid JSON array — no extra text, no markdown backticks:
     let text = completion.choices[0].message.content
 
     // ── Safe JSON Parse ───────────────────────────────────────────────────
-    text = text.replace(/```json/g, '').replace(/```/g, '').trim()
+    // ── Safe JSON Parse ───────────────────────────────────────────────────
+text = text.replace(/```json/g, '').replace(/```/g, '').trim()
 
-    const questions = JSON.parse(text)
+// Extract JSON array if there's any text before/after it
+const jsonMatch = text.match(/\[[\s\S]*\]/)
+if (!jsonMatch) {
+  console.error('No JSON array found in response:', text)
+  return res.status(500).json({ message: 'AI returned invalid format, please retry' })
+}
 
-    res.status(200).json({
-      success: true,
-      questions,
-      notesUsed: notes.length,
-      fromNotes: notes.length > 0,
-    })
+const questions = JSON.parse(jsonMatch[0])
 
+// Validate structure
+if (!Array.isArray(questions) || questions.length === 0) {
+  return res.status(500).json({ message: 'AI returned empty questions, please retry' })
+}
+
+res.status(200).json({
+  success: true,
+  questions,
+  notesUsed: notes.length,
+  fromNotes: notes.length > 0,
+})
+// 👇 ADD THIS MISSING CATCH BLOCK 👇
   } catch (error) {
     console.error('Quiz generation error:', error.message)
     res.status(500).json({
@@ -164,6 +184,7 @@ Respond ONLY with a valid JSON array — no extra text, no markdown backticks:
 }
 
 // ─── STUDY PLAN GENERATE ──────────────────────────────────────────────────────
+// ─── STUDY PLAN GENERATE ──────────────────────────────────────────────────────
 const generatePlan = async (req, res) => {
   try {
     const { subject, days, hours } = req.body
@@ -172,6 +193,10 @@ const generatePlan = async (req, res) => {
       return res.status(400).json({ message: 'Subject, days and hours are required' })
     }
 
+    // 1. 👇 Get today's date in YYYY-MM-DD format 👇
+    const today = new Date().toISOString().split('T')[0]
+
+    // 2. 👇 Inject ${today} into the prompt 👇
     const completion = await groq.chat.completions.create({
       model: 'llama-3.3-70b-versatile',
       messages: [
@@ -184,12 +209,12 @@ const generatePlan = async (req, res) => {
             "title": "plan title",
             "subject": "${subject}",
             "tasks": [
-              { "description": "task description", "dueDate": "2025-04-01" },
-              { "description": "task description", "dueDate": "2025-04-02" }
+              { "description": "task description", "dueDate": "${today}" },
+              { "description": "task description", "dueDate": "YYYY-MM-DD" }
             ]
           }
           
-          Generate ${days} tasks — one per day. Use today's date onwards for dueDates.`
+          Today's date is ${today}. Generate ${days} tasks — one per day starting from today.`
         }
       ],
       temperature: 0.7,
@@ -197,11 +222,22 @@ const generatePlan = async (req, res) => {
     })
 
     let text = completion.choices[0].message.content
+    
+    // 1. Clean up markdown backticks just in case
     text = text.replace(/```json/g, '').replace(/```/g, '').trim()
-    const plan = JSON.parse(text)
+
+    // 2. Safely extract ONLY the JSON object using Regex
+    const jsonMatch = text.match(/\{[\s\S]*\}/)
+    
+    if (!jsonMatch) {
+      console.error('No JSON object found in response:', text)
+      return res.status(500).json({ message: 'AI returned invalid format, please retry' })
+    }
+
+    // 3. Parse the extracted JSON safely
+    const plan = JSON.parse(jsonMatch[0])
 
     res.status(200).json({ success: true, plan })
-
   } catch (error) {
     console.error('Plan generation error:', error.message)
     res.status(500).json({

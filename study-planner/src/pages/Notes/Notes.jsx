@@ -18,7 +18,7 @@ import {
 import { FaBrain } from 'react-icons/fa'
 import api from '../../services/api'
 import AlertModal from '../../components/AlertModal'
-
+import { indexNote } from '../../services/studyService'
 /* ─────────────────────────────────────────── */
 /*  CONSTANTS                                   */
 /* ─────────────────────────────────────────── */
@@ -1087,15 +1087,21 @@ const Notes = () => {
   }
 
   const handleSaveNote = async () => {
-    const content = addEditorRef.current?.innerHTML || newNote.content
-    if (!newNote.subject||!newNote.title||!content.trim()) { toast.warning('Fill all fields!'); return }
-    setSaving(true)
-    try {
-      const res = await api.post('/api/notes/save', { title:newNote.title, subject:newNote.subject, content })
-      setNotes(prev => [res.data.note,...prev]); resetModal()
-    } catch { toast.error('Save failed') }
-    finally { setSaving(false) }
-  }
+  const content = addEditorRef.current?.innerHTML || newNote.content
+  if (!newNote.subject || !newNote.title || !content.trim()) { toast.warning('Fill all fields!'); return }
+  setSaving(true)
+  try {
+    const res = await api.post('/api/notes/save', { title: newNote.title, subject: newNote.subject, content })
+    setNotes(prev => [res.data.note, ...prev])
+
+    // ✅ ADD THESE TWO LINES:
+    const plain = content.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+    await indexNote(res.data.note._id, res.data.note.userId, plain)
+
+    resetModal()
+  } catch { toast.error('Save failed') }
+  finally { setSaving(false) }
+}
 
   const handleSaveWithSummary = async () => {
     const content = addEditorRef.current?.innerHTML || newNote.content
@@ -1117,18 +1123,23 @@ const Notes = () => {
     setShowEditModal(true)
   }
 
-  const handleEditSave = async () => {
-    if (!editNote.title.trim()||!editNote.content.trim()) { toast.warning('Title and content required!'); return }
-    setEditSaving(true)
-    try {
-      const res = await api.put(`/api/notes/${editNote._id}`, { title:editNote.title, subject:editNote.subject, content:editNote.content })
-      const updated = res.data.note
-      setNotes(prev => prev.map(n => n._id===updated._id ? updated : n))
-      if (selectedNote?._id===updated._id) setSelectedNote(updated)
-      setShowEditModal(false); toast.success('Saved!')
-    } catch { toast.error('Update failed') }
-    finally { setEditSaving(false) }
-  }
+const handleEditSave = async () => {
+  if (!editNote.title.trim() || !editNote.content.trim()) { toast.warning('Title and content required!'); return }
+  setEditSaving(true)
+  try {
+    const res = await api.put(`/api/notes/${editNote._id}`, { title: editNote.title, subject: editNote.subject, content: editNote.content })
+    const updated = res.data.note
+    setNotes(prev => prev.map(n => n._id === updated._id ? updated : n))
+    if (selectedNote?._id === updated._id) setSelectedNote(updated)
+
+    // ✅ ADD THESE TWO LINES:
+    const plain = editNote.content.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+    await indexNote(updated._id, updated.userId, plain)
+
+    setShowEditModal(false); toast.success('Saved!')
+  } catch { toast.error('Update failed') }
+  finally { setEditSaving(false) }
+}
 
   const openFullScreen = (note) => {
     setFullScreenNote(note)
@@ -1223,7 +1234,19 @@ const Notes = () => {
     setShowAddModal(false); setNewNote({subject:'',title:'',content:''})
     setAiPreview(null); setUploadedFile(null); setFilePreview(null); setFileAnalysis(null)
   }
-
+const reindexAllNotes = async () => {
+  if (notes.length === 0) { toast.warning('No notes to index!'); return }
+  toast.info('Indexing notes, please wait...')
+  let count = 0
+  for (const note of notes) {
+    const plain = note.content.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+    // try both field names — your Note model may use either
+    const userId = note.userId || note.user
+    await indexNote(note._id, userId, plain)
+    count++
+  }
+  toast.success(`✅ Indexed ${count} notes! Try the chatbot now.`)
+}
   /* ── RENDER ── */
   return (
     <div className="flex flex-col gap-5">
@@ -1239,6 +1262,10 @@ const Notes = () => {
           style={{ background:'linear-gradient(135deg,#0f766e,#14b8a6)' }}>
           <MdAdd size={20}/> Add Note
         </button>
+        <button onClick={reindexAllNotes}
+  className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm border border-gray-200 bg-white text-gray-600 hover:bg-gray-50">
+  🔄 Sync Notes to AI
+</button>
       </div>
 
       {error && <div className="px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm">{error}</div>}
@@ -1561,5 +1588,6 @@ const Notes = () => {
     </div>
   )
 }
+
 
 export default Notes

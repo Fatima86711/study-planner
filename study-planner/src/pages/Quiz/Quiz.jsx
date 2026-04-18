@@ -4,11 +4,14 @@ import 'react-toastify/dist/ReactToastify.css'
 import { MdCheckCircle, MdCancel, MdArrowForward, MdRefresh, MdNote } from 'react-icons/md'
 import { FaBrain } from 'react-icons/fa'
 import api from '../../services/api'
-
+import { useContext } from 'react'
+import { AuthContext } from '../../context/AuthContext'
+import { generateQuizFromNotes } from '../../services/studyService'
 const subjects = ['Mathematics', 'Physics', 'Chemistry', 'English', 'Biology', 'Computer Science']
 
 // ── Result Card ──
 const ResultCard = ({ score, total, subject, topic, notesUsed, onRetry }) => {
+  const { user } = useContext(AuthContext)
   const percentage = Math.round((score / total) * 100)
   const getMessage = () => {
     if (percentage >= 80) return { text: 'Excellent! 🎉', color: 'text-green-500' }
@@ -116,30 +119,36 @@ const Quiz = () => {
   const [submitting, setSubmitting] = useState(false)
 
   // ── Generate Questions ────────────────────────────────────────────────────
-  const handleStartQuiz = async () => {
-    if (!selectedSubject) {
-      toast.warning('Please select a subject first!')
+const handleStartQuiz = async () => {
+  if (!selectedSubject) {
+    toast.warning('Please select a subject first!')
+    return
+  }
+  setGenerating(true)
+  setGenError('')
+
+  try {
+    const res = await api.post('/api/ai/quiz', {
+      subject: selectedSubject,
+      topic: topic.trim() || null,
+    })
+
+    if (!res.data.questions || res.data.questions.length === 0) {
+      setGenError('No questions generated — please retry')
       return
     }
-    setGenerating(true)
-    setGenError('')
 
-    try {
-      const res = await api.post('/api/ai/quiz', {
-        subject: selectedSubject,
-        topic: topic.trim() || null,   // Topic is optional — use null when empty
-      })
+    setQuizData(res.data.questions)
+    setNotesUsed(res.data.notesUsed || 0)
+    setQuizStarted(true)
 
-      setQuizData(res.data.questions)
-      setNotesUsed(res.data.notesUsed)
-      setQuizStarted(true)
-
-    } catch (err) {
-      setGenError('Failed to generate questions — please retry')
-    } finally {
-      setGenerating(false)
-    }
+  } catch (err) {
+    console.error('Quiz error:', err)
+    setGenError('Failed to generate questions — please retry')
+  } finally {
+    setGenerating(false)
   }
+}
 
   const handleOptionClick = (index) => {
     if (isAnswered) return

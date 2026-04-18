@@ -1,4 +1,7 @@
 import { useState, useRef, useEffect } from "react";
+import { useContext } from "react";
+import { AuthContext } from "../context/AuthContext";
+import { getRAGContext } from "../services/studyService";
 
 // Helper to generate unique IDs for messages
 const generateId = () => Date.now().toString() + Math.random().toString(36).substr(2, 9);
@@ -10,6 +13,7 @@ const ChatBot = () => {
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const { user } = useContext(AuthContext);
   const messagesEndRef = useRef(null);
 
   // Auto scroll to bottom
@@ -17,61 +21,64 @@ const ChatBot = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const sendMessage = async () => {
-    if (!input.trim()) return;
+ const sendMessage = async () => {
+  if (!input.trim()) return;
 
-    const userMessage = { id: generateId(), role: "user", content: input };
-    setMessages(prev => [...prev, userMessage]);
-    setInput("");
-    setLoading(true);
+  const userMessage = { id: generateId(), role: "user", content: input };
+  setMessages(prev => [...prev, userMessage]);
+  setInput("");
+  setLoading(true);
 
-    try {
-      // Clean messages — remove any HTML, keep only plain text
-      const cleanMessages = [...messages, userMessage].map(msg => ({
-        role: msg.role,
-        content: msg.content.replace(/<[^>]+>/g, "").trim() // Strip HTML tags
-      }));
+  try {
+    const cleanMessages = [...messages, userMessage].map(msg => ({
+      role: msg.role,
+      content: msg.content.replace(/<[^>]+>/g, "").trim()
+    }));
 
-      const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${import.meta.env.VITE_GROQ_API_KEY}`
-        },
-        body: JSON.stringify({
-          model: "llama-3.1-8b-instant",
-          max_tokens: 500,
-          messages: [
-            {
-              role: "system",
-              content: "You are a helpful study assistant. Help students with their studies. Give concise and friendly answers in English."
-            },
-            ...cleanMessages
-          ]
-        })
-      });
+    // ✅ ADD THESE TWO LINES:
+    const context = await getRAGContext(user?._id, input);
+    const systemContent = context
+      ? `You are a helpful study assistant. Answer using the student's personal notes below. Quote from them directly when relevant.\n\nSTUDENT NOTES:\n${context}`
+      : "You are a helpful study assistant. Help students with their studies. Give concise and friendly answers in English.";
 
-      if (!response.ok) {
-        const errData = await response.json();
-        console.error("Groq API Error:", errData);
-        throw new Error(errData.error?.message || "API request failed");
-      }
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${import.meta.env.VITE_GROQ_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: "llama-3.1-8b-instant",
+        max_tokens: 500,
+        messages: [
+          { role: "system", content: systemContent }, // ✅ changed from hardcoded string
+          ...cleanMessages
+        ]
+      })
+    });
 
-      const data = await response.json();
-      const botReply = data.choices?.[0]?.message?.content || "Sorry, no response received.";
-      setMessages(prev => [...prev, { id: generateId(), role: "assistant", content: botReply }]);
-
-    } catch (error) {
-      console.error("ChatBot Error:", error.message);
-      setMessages(prev => [...prev, {
-        id: generateId(),
-        role: "assistant",
-        content: `Error: ${error.message}. Please check your API key and try again.`
-      }]);
-    } finally {
-      setLoading(false);
+    // ── everything below stays exactly the same ──
+    if (!response.ok) {
+      const errData = await response.json();
+      console.error("Groq API Error:", errData);
+      throw new Error(errData.error?.message || "API request failed");
     }
-  };
+
+    const data = await response.json();
+    const botReply = data.choices?.[0]?.message?.content || "Sorry, no response received.";
+    setMessages(prev => [...prev, { id: generateId(), role: "assistant", content: botReply }]);
+
+  } catch (error) {
+    console.error("ChatBot Error:", error.message);
+    setMessages(prev => [...prev, {
+      id: generateId(),
+      role: "assistant",
+      content: `Error: ${error.message}. Please check your API key and try again.`
+    }]);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
